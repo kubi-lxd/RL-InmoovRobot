@@ -18,13 +18,13 @@ MAX_STEPS = 1000  # WARNING: should be also change in __init__.py (timestep_limi
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
 N_STEPS_OUTSIDE_SAFETY_SPHERE = 5000
-RENDER_HEIGHT = 224
-RENDER_WIDTH = 224
+RENDER_HEIGHT = 256
+RENDER_WIDTH = 256
 Z_TABLE = -0.2
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
-DELTA_V = 0.03  # velocity per physics step.
+DELTA_V = 0.1  # velocity per physics step.
 DELTA_V_CONTINUOUS = 0.0035  # velocity per physics step (for continuous actions).
 DELTA_THETA = 0.1  # angular velocity per physics step.
 RELATIVE_POS = True  # Use relative position for ground truth
@@ -103,7 +103,7 @@ class KukaButtonGymEnv(SRLGymEnv):
         self._is_discrete = is_discrete
         self.terminated = False
         self.renderer = p.ER_TINY_RENDERER
-        self.debug = False
+        self.debug = True
         self.n_contacts = 0
         self.state_dim = state_dim
         self.action_joints = action_joints
@@ -313,6 +313,7 @@ class KukaButtonGymEnv(SRLGymEnv):
             finger_angle = 0.0  # Close the gripper
             # real_action = [dx, dy, -0.002, da, finger_angle]
             real_action = [dx, dy, dz, 0, finger_angle]
+            print("Action: [dx, dy, dz, 0, finger_angle]: {}".format(real_action))
         else:
             if self.action_joints:
                 arm_joints = np.array(self._kuka.joint_positions)[:7]
