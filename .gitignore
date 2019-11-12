@@ -102,3 +102,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# big urdf model files
+/urdf_robot
+
+# urdf note is an exception
+!/urdf_robot/urdf note.md
