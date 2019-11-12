@@ -7,8 +7,7 @@ import pybullet_data
 from ipdb import set_trace as tt
 
 # URDF_PATH = "/home/tete/work/SJTU/kuka_play/robotics-rl-srl/urdf_robot/"
-
-URDF_PATH="/home/kunan/SRL/newp/robotics-rl-srl/urdf_robot/"
+URDF_PATH="../../urdf_robot/"
 GRAVITY = -10.
 
 class Inmoov:
@@ -61,7 +60,8 @@ if __name__ == '__main__':
     robot = Inmoov()
     _urdf_path = pybullet_data.getDataPath()
     planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
-    # robot = Inmoov()
+    tomato2Id = p.loadURDF(os.path.join(URDF_PATH, "tomato_plant.urdf"), [0.4, 0.4, 0.5],
+                           baseOrientation=[0, 0, 0, 1])
     for i in range(1000000):
         robot.debugger_step()
 
