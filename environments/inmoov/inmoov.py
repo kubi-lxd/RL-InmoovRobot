@@ -65,16 +65,30 @@ class Inmoov:
         """
         joint_poses = motor_commands
         # TODO: i is what?
-        num_control = min((len(joint_poses),len(CONTROL_JOINT)))
-        for i in range(num_control):
-            # p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
-            #                         controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
-            #                         targetVelocity=0, force=self.max_force,
-            #                         maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
-            p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
-                                    controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
-                                    targetVelocity=0, force=self.max_force,
-                                    maxVelocity=4., positionGain=0.3, velocityGain=1)
+        num_control = min((len(joint_poses), len(CONTROL_JOINT)))
+
+        targetVelocities = [0] * num_control
+        forces = [self.max_force] * num_control
+        positionGains = [0.3] * num_control
+        velocityGains = [1] * num_control
+        p.setJointMotorControlArray(bodyUniqueId=self.inmoov_id,
+                                    controlMode=p.POSITION_CONTROL,
+                                    jointIndices=CONTROL_JOINT[:num_control],
+                                    targetPositions=motor_commands[:num_control],
+                                    targetVelocities=targetVelocities,
+                                    forces=forces,
+                                    positionGains=positionGains,
+                                    velocityGains=velocityGains
+                                    )
+        # for i in range(num_control):
+        #     # p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
+        #     #                         controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
+        #     #                         targetVelocity=0, force=self.max_force,
+        #     #                         maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
+        #     p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
+        #                             controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
+        #                             targetVelocity=0, force=self.max_force,
+        #                             maxVelocity=4., positionGain=0.3, velocityGain=1)
         p.stepSimulation()
 
     def step(self, action):
@@ -131,88 +145,88 @@ class Inmoov:
 
             camera_target_position = self.camera_target_pos
 
-            view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
-                cameraTargetPosition=(0.316, 0.316, 1.0),
-                distance=1.2,
-                yaw=90,  # 145 degree
-                pitch=-13,  # -36 degree
-                roll=0,
-                upAxisIndex=2
-            )
-            proj_matrix2 = p.computeProjectionMatrixFOV(
-                fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-                nearVal=0.1, farVal=100.0)
-            (_, _, px2, depth2, mask2) = p.getCameraImage(
-                width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
-                projectionMatrix=proj_matrix2, renderer=p.ER_TINY_RENDERER)
-
-
-            # view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
-            #     cameraTargetPosition=camera_target_position,
-            #     distance=2.,
-            #     yaw=145,  # 145 degree
-            #     pitch=-36,  # -36 degree
+            # view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
+            #     cameraTargetPosition=(0.316, 0.316, 1.0),
+            #     distance=1.2,
+            #     yaw=90,  # 145 degree
+            #     pitch=-13,  # -36 degree
             #     roll=0,
             #     upAxisIndex=2
             # )
-            #
-            # proj_matrix1 = p.computeProjectionMatrixFOV(
+            # proj_matrix2 = p.computeProjectionMatrixFOV(
             #     fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
             #     nearVal=0.1, farVal=100.0)
-            #
-            # (_, _, px, depth, mask) = p.getCameraImage(
-            #     width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
-            #     projectionMatrix=proj_matrix1, renderer=p.ER_TINY_RENDERER)
-            # px, depth, mask = np.array(px), np.array(depth), np.array(mask)
-            # if num_camera == 2:
-            #     view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
-            #         cameraTargetPosition=(0.316, 0.316, 1.0),
-            #         distance=1.2,
-            #         yaw=90,  # 145 degree
-            #         pitch=-13,  # -36 degree
-            #         roll=0,
-            #         upAxisIndex=2
-            #     )
-            #     proj_matrix2 = p.computeProjectionMatrixFOV(
-            #         fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-            #         nearVal=0.1, farVal=100.0)
-            #     (_, _, px2, depth2, mask2) = p.getCameraImage(
-            #         width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
-            #         projectionMatrix=proj_matrix2, renderer=p.ER_TINY_RENDERER)
-            #     ax1 = fig.add_subplot(231)
-            #     ax1.imshow(px)
-            #     ax1.set_title("rgb_1")
-            #     ax2 = fig.add_subplot(232)
-            #     ax2.imshow(depth)
-            #     ax2.set_title("depth_1")
-            #     ax3 = fig.add_subplot(233)
-            #     ax3.imshow(mask)
-            #     ax3.set_title("mask_1")
-            #     ax1 = fig.add_subplot(234)
-            #     ax1.imshow(px2)
-            #     ax1.set_title("rgb_2")
-            #     ax2 = fig.add_subplot(235)
-            #     ax2.imshow(depth2)
-            #     ax2.set_title("depth_2")
-            #     ax3 = fig.add_subplot(236)
-            #     ax3.imshow(mask2)
-            #     ax3.set_title("mask_2")
-            # else:  # only one camera
-            #     ax1 = fig.add_subplot(131)
-            #     ax1.imshow(px)
-            #     ax1.set_title("rgb_1")
-            #     ax2 = fig.add_subplot(132)
-            #     ax2.imshow(depth)
-            #     ax2.set_title("depth_1")
-            #     ax3 = fig.add_subplot(133)
-            #     ax3.imshow(mask)
-            #     ax3.set_title("mask_1")
-            # # rgb_array = np.array(px)
-            # # self.image_plot = plt.imshow(rgb_array)
-            # # self.image_plot.axes.grid(False)
-            # # plt.title("Inmoov Robot Simulation")
-            # fig.suptitle('Inmoov Simulation: Two Cameras View', fontsize=32 )
-            # plt.draw()
-            # plt.pause(0.00001)
+            # (_, _, px2, depth2, mask2) = p.getCameraImage(
+            #     width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
+            #     projectionMatrix=proj_matrix2, renderer=p.ER_TINY_RENDERER)
+
+
+            view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
+                cameraTargetPosition=camera_target_position,
+                distance=2.,
+                yaw=145,  # 145 degree
+                pitch=-36,  # -36 degree
+                roll=0,
+                upAxisIndex=2
+            )
+
+            proj_matrix1 = p.computeProjectionMatrixFOV(
+                fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+                nearVal=0.1, farVal=100.0)
+
+            (_, _, px, depth, mask) = p.getCameraImage(
+                width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
+                projectionMatrix=proj_matrix1, renderer=p.ER_TINY_RENDERER)
+            px, depth, mask = np.array(px), np.array(depth), np.array(mask)
+            if num_camera == 2:
+                view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
+                    cameraTargetPosition=(0.316, 0.316, 1.0),
+                    distance=1.2,
+                    yaw=90,  # 145 degree
+                    pitch=-13,  # -36 degree
+                    roll=0,
+                    upAxisIndex=2
+                )
+                proj_matrix2 = p.computeProjectionMatrixFOV(
+                    fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+                    nearVal=0.1, farVal=100.0)
+                (_, _, px2, depth2, mask2) = p.getCameraImage(
+                    width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
+                    projectionMatrix=proj_matrix2, renderer=p.ER_TINY_RENDERER)
+                ax1 = fig.add_subplot(231)
+                ax1.imshow(px)
+                ax1.set_title("rgb_1")
+                ax2 = fig.add_subplot(232)
+                ax2.imshow(depth)
+                ax2.set_title("depth_1")
+                ax3 = fig.add_subplot(233)
+                ax3.imshow(mask)
+                ax3.set_title("mask_1")
+                ax1 = fig.add_subplot(234)
+                ax1.imshow(px2)
+                ax1.set_title("rgb_2")
+                ax2 = fig.add_subplot(235)
+                ax2.imshow(depth2)
+                ax2.set_title("depth_2")
+                ax3 = fig.add_subplot(236)
+                ax3.imshow(mask2)
+                ax3.set_title("mask_2")
+            else:  # only one camera
+                ax1 = fig.add_subplot(131)
+                ax1.imshow(px)
+                ax1.set_title("rgb_1")
+                ax2 = fig.add_subplot(132)
+                ax2.imshow(depth)
+                ax2.set_title("depth_1")
+                ax3 = fig.add_subplot(133)
+                ax3.imshow(mask)
+                ax3.set_title("mask_1")
+            # rgb_array = np.array(px)
+            # self.image_plot = plt.imshow(rgb_array)
+            # self.image_plot.axes.grid(False)
+            # plt.title("Inmoov Robot Simulation")
+            fig.suptitle('Inmoov Simulation: Two Cameras View', fontsize=32 )
+            plt.draw()
+            plt.pause(0.00001)
 
 
