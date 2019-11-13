@@ -40,8 +40,6 @@ environments.registry.py 中会将本项目中的文件在gym.envs中注册
 * --eval-episode-window   影响 EPISODE_WINDOW_DISTILLATION_WIN
 * --new-lr  作为超参数输入algo.train
 
-
-
 ### 执行逻辑
 
 1. 首先是args把上述用户输入配置拿下来，并做一定的规则检查
@@ -54,4 +52,115 @@ environments.registry.py 中会将本项目中的文件在gym.envs中注册
 7. 构建超参数
 8. 开始训练 调用callback
 9. callback完成模型储存
+
+### env_kwargs
+
+* is_discrete
+* action_repeat
+* random_target
+* muiti_view
+* shape_reward
+* action_joints
+* srl_model
+* use_srl
+* srl_model_path
+* simple_continual_target,circular_continual_move,square_continual_move,eight_continual_move,chasing_continual_move,escape_continual_move
+
+## rl_baselines.rl_algorithm.ppo2.train
+
+这里是上面的train文件直接调用的训练函数
+
+进来以后填充param_kwargs 接着args和env_kwargs 以及超参传递到父类执行
+
+其父类StableBaselinesRLObject内的train函数为直接继承函数
+
+## rl_baselines.baseclasses.StableBaselinesRLObject.train
+
+### env
+
+env_kwargs经过makeEnv函数再经过rl_baselines.utils.createEnvs处理得到envs gym环境
+
+其中createEnvs调用了environments.utils内的makeEnv函数
+
+environments.utils.makeEnv函数复写了_make函数实现了环境的注册和创建（TODO：gym相关）
+
+env再经过DummyVecEnv等包装（暂时不懂） 出场
+
+### model
+
+从model_class生成self.model
+
+调用model.learn开始训练
+
+由于PPO2Model自身初始化函数有
+
+```python
+super(PPO2Model, self).__init__(name="ppo2", model_class=PPO2)
+```
+
+model_class为stable_baselines.PPO2  拿到了模型
+
+```python
+super(PPO2, self).__init__(policy=policy, env=env, verbose=verbose, requires_vec_env=True,                           _init_setup_model=_init_setup_model, policy_kwargs=policy_kwargs)
+```
+
+这里继承了ActorCriticRLModel的init  ActorCriticRLModel里的init
+
+```python
+super(ActorCriticRLModel, self).__init__(policy, env, verbose=verbose, requires_vec_env=requires_vec_env,                                         policy_base=policy_base, policy_kwargs=policy_kwargs)
+```
+
+又继承BaseRLModel的init  多重继承下    相关信息都被配置给了model
+
+### learn
+
+这里的learn 实际上是多重继承的PPO2model的learn
+
+```python
+def learn(self, total_timesteps, callback=None, seed=None, log_interval=1, tb_log_name="PPO2",          reset_num_timesteps=True):
+```
+
+发生位置在stable_baselines.ppo2.ppo2.PPO2.learn
+
+内部进行参数配置和种子配置
+
+调用Runner拿到env环境
+
+#### Runner
+
+这里重要！
+
+```python
+self.obs[:], rewards, self.dones, infos = self.env.step(clipped_actions)
+```
+
+实际是这里与环境交互的 为了拿到必要的数据  可以对比kuka_env来看
+
+（待补充 跳转到env_note.md）
+
+
+
+按batch开始循环 mb_loss_vals是局部损失
+
+mb_loss_vals通过_train_step得到
+
+### _train_step
+
+内部简单粗暴 sess run了一下 该有的都有了
+
+那么图是在那建的？转到setup_model
+
+### PPO2.init
+
+这个初始化函数中声明了self.graph 以及self.sess
+
+当_init_setup_model为真时，调用setup_model函数
+
+### setup_model
+
+这里调用了self.policy 它是ActorCriticPolicy的子类
+
+涉及到DiagGaussianProbabilityDistributionType
+
+有专属的policy数据流（待补充）
 
