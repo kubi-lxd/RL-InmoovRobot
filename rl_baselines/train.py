@@ -354,7 +354,7 @@ def main():
 
     # allow multi-view
     env_kwargs['multi_view'] = args.srl_model == "multi_view_srl"
-    parser = algo.customArguments(parser)
+    parser = algo.customArguments(parser) #### mark
     args = parser.parse_args()
 
     args, env_kwargs = configureEnvAndLogFolder(args, env_kwargs, all_models)

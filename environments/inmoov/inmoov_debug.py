@@ -10,6 +10,7 @@ from ipdb import set_trace as tt
 URDF_PATH="../../urdf_robot/"
 GRAVITY = -10.
 
+'''
 class Inmoov:
     def __init__(self, urdf_path=URDF_PATH):
         self.urdf_path = urdf_path
@@ -53,6 +54,9 @@ class Inmoov:
                 except:
                     continue
             p.stepSimulation()
+'''
+
+from environments.inmoov.inmoov import Inmoov
 
 import time
 if __name__ == '__main__':
@@ -63,6 +67,7 @@ if __name__ == '__main__':
     tomato2Id = p.loadURDF(os.path.join(URDF_PATH, "tomato_plant.urdf"), [0.4, 0.4, 0.5],
                            baseOrientation=[0, 0, 0, 1])
     for i in range(1000000):
+        time.sleep(0.01)
         robot.debugger_step()
-
+        robot.render(2)
     p.disconnect()

@@ -8,7 +8,7 @@ import pybullet_data
 from ipdb import set_trace as tt
 
 from environments.inmoov.joints_registry import joint_registry, control_joint
-URDF_PATH = "/home/tete/work/SJTU/kuka_play/robotics-rl-srl/urdf_robot/"
+URDF_PATH = "../../urdf_robot/"
 GRAVITY = -9.8
 RENDER_WIDTH, RENDER_HEIGHT = 512, 512
 CONTROL_JOINT = list(control_joint.keys())
