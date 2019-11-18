@@ -46,6 +46,7 @@ class Inmoov:
             # To debug the camera position
             debug_camera = 0
         else:
+            self.joints_key = list(joint_registry.keys())
             p.connect(p.DIRECT)
 
         self.reset()
@@ -106,9 +107,18 @@ class Inmoov:
         # tmp1 = p.getNumBodies(self.inmoov_id)  # Equal to 1, only one body
         # tmp2 = p.getNumConstraints(self.inmoov_id)  # Equal to 0, no constraint?
         # tmp3 = p.getBodyUniqueId(self.inmoov_id)  # res = 0, do not understand
-        for jointIndex in range(self.num_joints):
+        for jointIndex in self.joints_key:
             p.resetJointState(self.inmoov_id, jointIndex, 0.)
 
+        for i in self.joints_key:
+
+            joint_info = p.getJointInfo(self.inmoov_id, i)
+            jointLimits = joint_info[8:10]
+            jointMaxForce = joint_info[10]
+            jointMaxVelocity = joint_info[11]
+            if i in [13,14,18]:
+                print(joint_info)
+        tt()
         # tt( )
 
     def debugger_step(self):
@@ -133,6 +143,7 @@ class Inmoov:
         :return:
         """
         # TODO
+
 
     def render(self, num_camera=1):
         if self._renders:
