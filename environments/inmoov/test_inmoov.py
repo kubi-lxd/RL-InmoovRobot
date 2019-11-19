@@ -19,12 +19,14 @@ if __name__ == '__main__':
     # robot = Inmoov()
     num_joint = robot.get_action_dimension()
     i = 0
-    # while True:
-    #     time.sleep(0.01)
-    #     robot.debugger_step()
+
+    robot.get_joint_info()
+    while True:
+        time.sleep(0.1)
+        # robot.debugger_step()
         # print("Step {}".format(i))
         # i+=1
-        # robot.apply_action([3,3,3,-10,3])
+        robot.apply_action_link([3,3,3,-10,3])
         # robot.render(2)
 
     p.disconnect()
