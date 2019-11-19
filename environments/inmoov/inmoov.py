@@ -7,6 +7,9 @@ import pybullet as p
 import pybullet_data
 from ipdb import set_trace as tt
 
+from mpl_toolkits.mplot3d import Axes3D
+
+
 from environments.inmoov.joints_registry import joint_registry, control_joint
 URDF_PATH = "/home/tete/work/SJTU/kuka_play/robotics-rl-srl/urdf_robot/"
 GRAVITY = -9.8
@@ -116,10 +119,31 @@ class Inmoov:
             jointLimits = joint_info[8:10]
             jointMaxForce = joint_info[10]
             jointMaxVelocity = joint_info[11]
-            if i in [13,14,18]:
-                print(joint_info)
+
+
+        # debug part
+        link_position = []
+        p.getBasePositionAndOrientation(self.inmoov_id)
+        for i in range(100):
+            print("linkWorldPosition, , , , workldLinkFramePosition", i)
+            link_state = p.getLinkState(self.inmoov_id, i)
+            if link_state is not None:
+                link_position.append(link_state[0])
+
+        link_position = np.array(link_position).T
+        print(link_position.shape)
+
+        fig = plt.figure("3D link plot")
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(link_position[0], link_position[1], link_position[2], c='r', marker='o')
+        for i in range(len(link_position)):
+            ax.annotate( str(i), (link_position[0,i], link_position[1,i], link_position[2,i]) )
+        # ax.set_xlim([-1, 1])
+        # ax.set_ylim([-1, 1])
+        # ax.set_zlim([0, 2])
+        plt.show()
         tt()
-        # tt( )
+        # Debug part
 
     def debugger_step(self):
 
