@@ -30,8 +30,13 @@ class Inmoov:
         self.max_force = 200.
         self.max_velocity = 3.
         # joint information
-        self.joint_info = {}
-
+        # jointName, (jointLowerLimit, jointUpperLimit), jointMaxForce, jointMaxVelocity, linkName, parentIndex
+        self.joint_name = {}
+        self.joint_lower_limits = None
+        self.joint_upper_limits = None
+        self.jointMaxForce = None
+        self.jointMaxVelocity = None
+        self.joints_key = None
         # camera position
         self.camera_target_pos = (0.0, 0.0, 1.0)
         if self.debug_mode:
@@ -51,9 +56,7 @@ class Inmoov:
             # To debug the camera position
             debug_camera = 0
         else:
-            self.joints_key = list(joint_registry.keys())
             p.connect(p.DIRECT)
-
         self.reset()
 
     def get_action_dimension(self):
@@ -116,13 +119,32 @@ class Inmoov:
         target_pos = (current_state[0] + dx, current_state[1] + dy, current_state[2] + dz)
         printGreen("Current hand positioin: {}".format(joint_position[0]))
 
-        joint_poses = p.calculateInverseKinematics(self.inmoov_id, hand_index, target_pos)
-        tt()
-        for i, index in enumerate(self.joints_key):
-            p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=index, controlMode=p.POSITION_CONTROL,
-                                    targetPosition=joint_poses[i], targetVelocity=0, force=self.max_force,
-                                    maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
+        num_control_joints = len(self.joints_key)
+        restPoses = [0] * num_control_joints
+        jointRanges = [4] * num_control_joints
+        targetVelocity = [0] * num_control_joints
+        joint_poses = p.calculateInverseKinematics(self.inmoov_id, hand_index, target_pos,
+                                                   lowerLimits=self.joint_lower_limits,
+                                                   upperLimits=self.joint_upper_limits,
+                                                   jointRanges=jointRanges,
+                                                   restPoses= restPoses
+                                                   )
 
+        p.setJointMotorControlArray(self.inmoov_id, self.joints_key,
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPositions=joint_poses,
+                                    targetVelocities=targetVelocity,
+                                    #maxVelocities=self.jointMaxVelocity,
+                                    forces=self.jointMaxForce
+                                    )
+
+        # for i, index in enumerate(self.joints_key):
+        #     joint_info = self.joint_name[index]
+        #     jointMaxForce, jointMaxVelocity = joint_info[2:4]
+        #
+        #     p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=index, controlMode=p.POSITION_CONTROL,
+        #                             targetPosition=joint_poses[i], targetVelocity=0, force=self.max_force,
+        #                             maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
 
         p.stepSimulation()
 
@@ -137,6 +159,7 @@ class Inmoov:
         Reset the environment
         """
         p.setGravity(0., 0., -10.)
+        self.get_joint_info()
         self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
         self.num_joints = p.getNumJoints(self.inmoov_id)
         # tmp1 = p.getNumBodies(self.inmoov_id)  # Equal to 1, only one body
@@ -145,8 +168,6 @@ class Inmoov:
         for jointIndex in self.joints_key:
             p.resetJointState(self.inmoov_id, jointIndex, 0.)
         # get joint information
-        self.get_joint_info()
-
 
         ######################## debug part #######################
         # link_position = []
@@ -173,7 +194,7 @@ class Inmoov:
         # ax.set_zlim([1, 2])
         # plt.show()
         ######################## debug part #######################
-        
+
     def get_joint_info(self):
         """
         From this we can see the fact that:
@@ -183,6 +204,8 @@ class Inmoov:
         - we have 53 revo
         :return:
         """
+        self.joints_key = []
+        self.joint_lower_limits, self.joint_upper_limits, self.jointMaxForce, self.jointMaxVelocity = [], [], [], []
         for i in range(self.num_joints):
             info = p.getJointInfo(self.inmoov_id, i)
             # if info[7] != 0:
@@ -190,11 +213,16 @@ class Inmoov:
             # if info[6] != 0:
             #     print(info[1], "has damping")
             if info[2] == p.JOINT_REVOLUTE:
-                self.joint_info[i] = (info[1], (info[8], info[9]), info[12], info[13], info[16])
-        return
+                # jointName, (jointLowerLimit, jointUpperLimit), jointMaxForce, jointMaxVelocity, linkName, parentIndex
+                # (info[1], (info[8], info[9]), info[10], info[11], info[12], info[16])
+                self.joint_name[i] = info[1]
+                self.joint_lower_limits.append(info[8])
+                self.joint_upper_limits.append(info[9])
+                self.jointMaxForce.append(info[10])
+                self.jointMaxVelocity.append(info[11])
+                self.joints_key.append(i)
 
     def debugger_step(self):
-
         if self.debug_mode:
             current_joints = []
             # The order is as the same as the self.joint_key
