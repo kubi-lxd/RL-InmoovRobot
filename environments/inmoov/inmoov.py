@@ -15,7 +15,7 @@ CONTROL_JOINT.sort()
 
 
 class Inmoov:
-    def __init__(self, urdf_path=URDF_PATH, debug_mode=False):
+    def __init__(self, urdf_path=URDF_PATH, positional_control=True, debug_mode=False, use_null_space=True):
         self.urdf_path = urdf_path
         self._renders = True
         self.debug_mode = debug_mode
@@ -35,8 +35,10 @@ class Inmoov:
         self.joints_key = None
         # camera position
         self.camera_target_pos = (0.0, 0.0, 1.0)
+        # Control mode: by joint or by effector position
+        self.positional_control = positional_control
         # inverse Kinematic solver, ref: Pybullet
-        self.use_null_space = True
+        self.use_null_space = use_null_space
         if self.debug_mode:
             client_id = p.connect(p.SHARED_MEMORY)
             if client_id < 0:
@@ -52,8 +54,84 @@ class Inmoov:
             self.debug_joints = debug_joints
         else:
             p.connect(p.DIRECT)
-
+        global CONNECTED_TO_SIMULATOR
+        CONNECTED_TO_SIMULATOR = True
         self.reset()
+
+    def reset(self):
+        """
+        Reset the environment
+        """
+        p.resetSimulation()
+        p.setPhysicsEngineParameter(numSolverIterations=150)
+        p.setGravity(0., 0., -10.)
+
+        self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
+        self.get_joint_info()
+        self.num_joints = p.getNumJoints(self.inmoov_id)
+        # tmp1 = p.getNumBodies(self.inmoov_id)  # Equal to 1, only one body
+        # tmp2 = p.getNumConstraints(self.inmoov_id)  # Equal to 0, no constraint?
+        # tmp3 = p.getBodyUniqueId(self.inmoov_id)  # res = 0, do not understand
+        for jointIndex in self.joints_key:
+            p.resetJointState(self.inmoov_id, jointIndex, 0.)
+        # get the effector world position
+        self.effector_pos = p.getLinkState(self.inmoov_id, self.effectorId)[0]
+        # # get link information
+        # ######################## debug part #######################
+        # from mpl_toolkits.mplot3d import Axes3D
+        # #To plot the link index by graphical representation
+        # link_position = []
+        # p.getBasePositionAndOrientation(self.inmoov_id)
+        # for i in range(100):
+        #     print("linkWorldPosition, , , , workldLinkFramePosition", i)
+        #     link_state = p.getLinkState(self.inmoov_id, i)
+        #     if link_state is not None:
+        #         link_position.append(link_state[0])
+        #
+        # link_position = np.array(link_position).T
+        # print(link_position.shape)
+        #
+        # fig = plt.figure("3D link plot")
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.scatter(link_position[0], link_position[1], link_position[2], c='r', marker='o')
+        # for i in range(link_position.shape[1]):
+        #     # ax.annotate(str(i), (link_position[0,i], link_position[1,i], link_position[2,i]) )
+        #     ax.text(link_position[0,i], link_position[1,i], link_position[2,i], str(i))
+        # # ax.set_xlim([-1, 1])
+        # # ax.set_ylim([-1, 1])
+        # ax.set_xlim([-.25, .25])
+        # ax.set_ylim([-.25, .25])
+        # ax.set_zlim([1, 2])
+        # plt.show()
+        # ####################### debug part #######################
+
+    def getGroundTruth(self):
+        if self.positional_control:
+            position = p.getLinkState(self.inmoov_id, self.effectorId)[0]
+            return np.array(position)
+        else:  # control by joint and return the joint state (joint position)
+            # we can add joint velocity as joint state, but here we didnt, getJointState can get us more infomation
+            joints_state = p.getJointStates(self.inmoov_id, self.joints_key)
+            return np.array(joints_state)[:, 0]
+
+    def getGroundTruthDim(self):
+        if self.positional_control:
+            return 3
+        else:
+            return len(self.joints_key)
+
+    def __del__(self):
+        if CONNECTED_TO_SIMULATOR:
+            p.disconnect()
+
+    def step(self, action):
+        raise NotImplementedError
+
+    def _termination(self):
+        raise NotImplementedError
+
+    def _reward(self):
+        raise NotImplementedError
 
     def get_action_dimension(self):
         """
@@ -61,6 +139,12 @@ class Inmoov:
         :return: int
         """
         return len(self.joints_key)
+
+    def get_effector_dimension(self):
+        """
+        :return: three dimension for x, y and z
+        """
+        return 3
 
     def apply_action_joints(self, motor_commands):
         """
@@ -82,7 +166,6 @@ class Inmoov:
                                     positionGains=position_gains,
                                     velocityGains=velocity_gains
                                     )
-
         # # Same functionality, but upper lines works better
         # for i in range(num_control):
         #     # p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
@@ -149,59 +232,6 @@ class Inmoov:
         #                             maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
 
         p.stepSimulation()
-
-    def step(self, action):
-        assert len(action) == len(control_joint)
-        # TODO
-        return
-
-    def reset(self):
-        # TODO: Bug in reset!!!!!!!!!!!!!!
-        """
-        Reset the environment
-        """
-        p.resetSimulation()
-        p.setPhysicsEngineParameter(numSolverIterations=150)
-        p.setGravity(0., 0., -10.)
-
-        self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
-        self.get_joint_info()
-        self.num_joints = p.getNumJoints(self.inmoov_id)
-        # tmp1 = p.getNumBodies(self.inmoov_id)  # Equal to 1, only one body
-        # tmp2 = p.getNumConstraints(self.inmoov_id)  # Equal to 0, no constraint?
-        # tmp3 = p.getBodyUniqueId(self.inmoov_id)  # res = 0, do not understand
-        for jointIndex in self.joints_key:
-            p.resetJointState(self.inmoov_id, jointIndex, 0.)
-        # get the effector world position
-        self.effector_pos = p.getLinkState(self.inmoov_id, self.effectorId)[0]
-        # # get link information
-        # ######################## debug part #######################
-        # from mpl_toolkits.mplot3d import Axes3D
-        # #To plot the link index by graphical representation
-        # link_position = []
-        # p.getBasePositionAndOrientation(self.inmoov_id)
-        # for i in range(100):
-        #     print("linkWorldPosition, , , , workldLinkFramePosition", i)
-        #     link_state = p.getLinkState(self.inmoov_id, i)
-        #     if link_state is not None:
-        #         link_position.append(link_state[0])
-        #
-        # link_position = np.array(link_position).T
-        # print(link_position.shape)
-        #
-        # fig = plt.figure("3D link plot")
-        # ax = fig.add_subplot(111, projection='3d')
-        # ax.scatter(link_position[0], link_position[1], link_position[2], c='r', marker='o')
-        # for i in range(link_position.shape[1]):
-        #     # ax.annotate(str(i), (link_position[0,i], link_position[1,i], link_position[2,i]) )
-        #     ax.text(link_position[0,i], link_position[1,i], link_position[2,i], str(i))
-        # # ax.set_xlim([-1, 1])
-        # # ax.set_ylim([-1, 1])
-        # ax.set_xlim([-.25, .25])
-        # ax.set_ylim([-.25, .25])
-        # ax.set_zlim([1, 2])
-        # plt.show()
-        # ####################### debug part #######################
 
     def get_joint_info(self):
         """
