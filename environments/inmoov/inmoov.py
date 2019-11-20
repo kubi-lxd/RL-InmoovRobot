@@ -1,12 +1,9 @@
 import os
-from collections import Counter
 
 import numpy as np
 from matplotlib import pyplot as plt
 import pybullet as p
 from ipdb import set_trace as tt
-
-from mpl_toolkits.mplot3d import Axes3D
 
 from util.color_print import printGreen, printBlue, printRed, printYellow
 from environments.inmoov.joints_registry import joint_registry, control_joint
@@ -25,10 +22,9 @@ class Inmoov:
         self.inmoov_id = -1
         self.num_joints = -1
         self.robot_base_pos = [0, 0, 0]
-
-        # constraint
-        self.max_force = 200.
-        self.max_velocity = 3.
+        # effectorID = 28: right hand
+        self.effectorId = 28
+        self.effector_pos = None
         # joint information
         # jointName, (jointLowerLimit, jointUpperLimit), jointMaxForce, jointMaxVelocity, linkName, parentIndex
         self.joint_name = {}
@@ -39,6 +35,8 @@ class Inmoov:
         self.joints_key = None
         # camera position
         self.camera_target_pos = (0.0, 0.0, 1.0)
+        # inverse Kinematic solver, ref: Pybullet
+        self.use_null_space = True
         if self.debug_mode:
             client_id = p.connect(p.SHARED_MEMORY)
             if client_id < 0:
@@ -52,9 +50,6 @@ class Inmoov:
                 self.joints_key.append(joint_index)
                 debug_joints.append(p.addUserDebugParameter(joint_registry[joint_index], -1., 1., 0))
             self.debug_joints = debug_joints
-
-            # To debug the camera position
-            debug_camera = 0
         else:
             p.connect(p.DIRECT)
         self.reset()
@@ -64,33 +59,30 @@ class Inmoov:
         To know how many joint can be controlled
         :return: int
         """
-        return len(CONTROL_JOINT)
+        return len(self.joints_key)
 
-    def apply_action(self, motor_commands):
+    def apply_action_joints(self, motor_commands):
         """
         Apply the action to the inmoov robot joint
         If the length of commands is inferior to the length of controlable joint, then we only control the first joints
         :param motor_commands:
         """
-        joint_poses = motor_commands
-        # TODO: i is what?
-        num_control = min((len(joint_poses), len(CONTROL_JOINT)))
-
-        targetVelocities = [0] * num_control
-        forces = [self.max_force] * num_control
-        positionGains = [0.3] * num_control
-        velocityGains = [1] * num_control
+        assert len(motor_commands) == len(self.joints_key), "Error, please provide control commands for all joints"
+        num_control = len(motor_commands)
+        target_velocities = [0] * num_control
+        position_gains = [0.3] * num_control
+        velocity_gains = [1] * num_control
         p.setJointMotorControlArray(bodyUniqueId=self.inmoov_id,
                                     controlMode=p.POSITION_CONTROL,
-                                    jointIndices=CONTROL_JOINT[:num_control],
-                                    targetPositions=motor_commands[:num_control],
-                                    targetVelocities=targetVelocities,
-                                    forces=forces,
-                                    positionGains=positionGains,
-                                    velocityGains=velocityGains
+                                    jointIndices=self.joints_key,
+                                    targetPositions=motor_commands,
+                                    targetVelocities=target_velocities,
+                                    forces=self.jointMaxForce,
+                                    positionGains=position_gains,
+                                    velocityGains=velocity_gains
                                     )
 
-        #### Same functionality, but upper lines works better
+        # # Same functionality, but upper lines works better
         # for i in range(num_control):
         #     # p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
         #     #                         controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
@@ -102,41 +94,50 @@ class Inmoov:
         #                             maxVelocity=4., positionGain=0.3, velocityGain=1)
         p.stepSimulation()
 
-    def apply_action_link(self, motor_commands):
+    def apply_action_pos(self, motor_commands):
         """
         Apply the action to the inmoov robot joint
         If the length of commands is inferior to the length of controlable joint, then we only control the first joints
-        :param motor_commands:
+        :param motor_commands: [dx, dy, dz]
         """
-        dx = 0
-        dy = 0
-        dz = - 0.1
-        hand_index = 28
-        # TODO: this is an inefficient way to get the current position, we should use a traker of the position
-        joint_position = p.getLinkState(self.inmoov_id, hand_index)
-
+        # TODO: Add orientation control information for a better physical representation
+        # assert len(motor_commands) == (3+4) x,y,z + Quaternion
+        assert len(motor_commands) == 3, "Invalid input commands, please use a 3D: x,y,z information"
+        dx, dy, dz = motor_commands
+        # We observe that the control has error, and the best way to get the current
+        # position is to getLinkState instead of save the initial position and do the incremental thing
+        joint_position = p.getLinkState(self.inmoov_id, self.effectorId)
         current_state = joint_position[0]
+        # printGreen("Current hand position: {}".format(joint_position[0]))
+        # printYellow("Current position by accumulate error")
+        # printRed("Error: {}".format(np.linalg.norm(np.array(current_state) - np.array(self.effector_pos))))
+        self.effector_pos = current_state
+        # TODO: it might be better to constraint the target position in a constraint box?
         target_pos = (current_state[0] + dx, current_state[1] + dy, current_state[2] + dz)
-        printGreen("Current hand positioin: {}".format(joint_position[0]))
-
+        # Compute the inverse kinematics for every revolute joint
         num_control_joints = len(self.joints_key)
-        restPoses = [0] * num_control_joints
-        jointRanges = [4] * num_control_joints
-        targetVelocity = [0] * num_control_joints
-        joint_poses = p.calculateInverseKinematics(self.inmoov_id, hand_index, target_pos,
-                                                   lowerLimits=self.joint_lower_limits,
-                                                   upperLimits=self.joint_upper_limits,
-                                                   jointRanges=jointRanges,
-                                                   restPoses= restPoses
-                                                   )
-
+        # position at rest
+        rest_poses = [0] * num_control_joints
+        # don't know what is its influence
+        joint_ranges = [4] * num_control_joints
+        # the velocity at the target position
+        target_velocity = [0] * num_control_joints
+        if self.use_null_space:
+            # TODO: Add orientation control
+            joint_poses = p.calculateInverseKinematics(self.inmoov_id, self.effectorId, target_pos,
+                                                       lowerLimits=self.joint_lower_limits,
+                                                       upperLimits=self.joint_upper_limits,
+                                                       jointRanges=joint_ranges,
+                                                       restPoses=rest_poses
+                                                       )
+        else:  # use regular KI solution
+            joint_poses = p.calculateInverseKinematics(self.inmoov_id, self.effectorId, target_pos)
         p.setJointMotorControlArray(self.inmoov_id, self.joints_key,
                                     controlMode=p.POSITION_CONTROL,
                                     targetPositions=joint_poses,
-                                    targetVelocities=targetVelocity,
-                                    #maxVelocities=self.jointMaxVelocity,
-                                    forces=self.jointMaxForce
-                                    )
+                                    targetVelocities=target_velocity,
+                                    #  maxVelocities=self.jointMaxVelocity,
+                                    forces=self.jointMaxForce)
 
         # for i, index in enumerate(self.joints_key):
         #     joint_info = self.joint_name[index]
@@ -147,7 +148,6 @@ class Inmoov:
         #                             maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
 
         p.stepSimulation()
-
 
     def step(self, action):
         assert len(action) == len(control_joint)
@@ -167,9 +167,12 @@ class Inmoov:
         # tmp3 = p.getBodyUniqueId(self.inmoov_id)  # res = 0, do not understand
         for jointIndex in self.joints_key:
             p.resetJointState(self.inmoov_id, jointIndex, 0.)
-        # get joint information
-
-        ######################## debug part #######################
+        # get the effector world position
+        self.effector_pos = p.getLinkState(self.inmoov_id, self.effectorId)[0]
+        # # get link information
+        # ######################## debug part #######################
+        # from mpl_toolkits.mplot3d import Axes3D
+        # #To plot the link index by graphical representation
         # link_position = []
         # p.getBasePositionAndOrientation(self.inmoov_id)
         # for i in range(100):
@@ -193,7 +196,7 @@ class Inmoov:
         # ax.set_ylim([-.25, .25])
         # ax.set_zlim([1, 2])
         # plt.show()
-        ######################## debug part #######################
+        # ####################### debug part #######################
 
     def get_joint_info(self):
         """
@@ -244,7 +247,6 @@ class Inmoov:
         """
         # TODO
 
-
     def render(self, num_camera=1):
         if self._renders:
             plt.ion()
@@ -252,7 +254,7 @@ class Inmoov:
                 figsize = np.array([3, 1]) * 5
             else:
                 figsize = np.array([3, 2]) * 5
-            fig = plt.figure("Inmoov",figsize=figsize)
+            fig = plt.figure("Inmoov", figsize=figsize)
 
             camera_target_position = self.camera_target_pos
 
@@ -271,7 +273,7 @@ class Inmoov:
             #     width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
             #     projectionMatrix=proj_matrix2, renderer=p.ER_TINY_RENDERER)
 
-
+            # first camera
             view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
                 cameraTargetPosition=camera_target_position,
                 distance=2.,
@@ -280,15 +282,15 @@ class Inmoov:
                 roll=0,
                 upAxisIndex=2
             )
-
             proj_matrix1 = p.computeProjectionMatrixFOV(
                 fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
                 nearVal=0.1, farVal=100.0)
-
+            # depth: the depth camera, mask: mask on different body ID
             (_, _, px, depth, mask) = p.getCameraImage(
                 width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
                 projectionMatrix=proj_matrix1, renderer=p.ER_TINY_RENDERER)
             px, depth, mask = np.array(px), np.array(depth), np.array(mask)
+            # if there are more than one camera, (only two are allowed actually)
             if num_camera == 2:
                 view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
                     cameraTargetPosition=(0.316, 0.316, 1.0),
@@ -336,8 +338,7 @@ class Inmoov:
             # self.image_plot = plt.imshow(rgb_array)
             # self.image_plot.axes.grid(False)
             # plt.title("Inmoov Robot Simulation")
-            fig.suptitle('Inmoov Simulation: Two Cameras View', fontsize=32 )
+            fig.suptitle('Inmoov Simulation: Two Cameras View', fontsize=32)
             plt.draw()
+            # To avoid too fast drawing conflict
             plt.pause(0.00001)
-
-
