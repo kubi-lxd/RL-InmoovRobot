@@ -12,3 +12,6 @@ Implement the function of setting multiple lenses to observe the virtual environ
 * add kuka and mobile robot Env files
 * add rl-baselines
 * add urdf download link
+* add state_representation
+* add srl_zoo
+* revise .gitignore file
