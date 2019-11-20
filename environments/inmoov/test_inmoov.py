@@ -19,12 +19,20 @@ if __name__ == '__main__':
     # robot = Inmoov()
     num_joint = robot.get_action_dimension()
     i = 0
+
+    robot.get_joint_info()
+    time1 = time.time()
+    k = 1
     while True:
-        time.sleep(0.01)
+        time.sleep(0.02)
         robot.debugger_step()
         # print("Step {}".format(i))
-        # i+=1
-        # robot.apply_action([3,3,3,-10,3])
-        robot.render(2)
-
+        i+=1
+        #robot.apply_action_pos(motor_commands=[-0.1, 0., -0.05])
+        # robot.render(2)
+        # if i%100 == 0:
+        #
+        #     robot.reset()
+        #     print((time.time() -time1) / k)
+        #     k +=1
     p.disconnect()
