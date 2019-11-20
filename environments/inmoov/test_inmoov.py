@@ -8,7 +8,7 @@ import numpy as np
 from environments.inmoov.inmoov import Inmoov
 
 if __name__ == '__main__':
-    robot = Inmoov(debug_mode=False)
+    robot = Inmoov(debug_mode=True)
     # _urdf_path = pybullet_data.getDataPath()
     _urdf_path = "/home/tete/work/SJTU/inmoov/robotics-rl-srl/pybullet_data"
     planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
@@ -24,13 +24,15 @@ if __name__ == '__main__':
     time1 = time.time()
     k = 1
     while True:
-        i += 1
-        # robot.debugger_step()
+        time.sleep(0.02)
+        robot.debugger_step()
         # print("Step {}".format(i))
-        # i+=1
-        robot.apply_action_pos([3,3,3,-10,3])
+        i+=1
+        #robot.apply_action_pos(motor_commands=[-0.1, 0., -0.05])
         # robot.render(2)
-        if i%1000 == 0:
-            print((time.time() -time1) / k)
-            k +=1
+        # if i%100 == 0:
+        #
+        #     robot.reset()
+        #     print((time.time() -time1) / k)
+        #     k +=1
     p.disconnect()

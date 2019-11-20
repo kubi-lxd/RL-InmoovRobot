@@ -7,7 +7,7 @@ from ipdb import set_trace as tt
 
 from util.color_print import printGreen, printBlue, printRed, printYellow
 from environments.inmoov.joints_registry import joint_registry, control_joint
-URDF_PATH = "/home/tete/work/SJTU/kuka_play/robotics-rl-srl/urdf_robot/"
+URDF_PATH = "/home/tete/work/SJTU/inmoov/robotics-rl-srl/urdf_robot/"
 GRAVITY = -9.8
 RENDER_WIDTH, RENDER_HEIGHT = 512, 512
 CONTROL_JOINT = list(control_joint.keys())
@@ -52,6 +52,7 @@ class Inmoov:
             self.debug_joints = debug_joints
         else:
             p.connect(p.DIRECT)
+
         self.reset()
 
     def get_action_dimension(self):
@@ -155,12 +156,16 @@ class Inmoov:
         return
 
     def reset(self):
+        # TODO: Bug in reset!!!!!!!!!!!!!!
         """
         Reset the environment
         """
+        p.resetSimulation()
+        p.setPhysicsEngineParameter(numSolverIterations=150)
         p.setGravity(0., 0., -10.)
-        self.get_joint_info()
+
         self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
+        self.get_joint_info()
         self.num_joints = p.getNumJoints(self.inmoov_id)
         # tmp1 = p.getNumBodies(self.inmoov_id)  # Equal to 1, only one body
         # tmp2 = p.getNumConstraints(self.inmoov_id)  # Equal to 0, no constraint?
