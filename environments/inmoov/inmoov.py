@@ -7,7 +7,7 @@ from ipdb import set_trace as tt
 
 from util.color_print import printGreen, printBlue, printRed, printYellow
 from environments.inmoov.joints_registry import joint_registry, control_joint
-URDF_PATH = "../../urdf_robot/"
+URDF_PATH = "/home/tete/work/SJTU/inmoov/robotics-rl-srl/urdf_robot/"
 GRAVITY = -9.8
 RENDER_WIDTH, RENDER_HEIGHT = 512, 512
 CONTROL_JOINT = list(control_joint.keys())
@@ -23,7 +23,8 @@ class Inmoov:
         self.num_joints = -1
         self.robot_base_pos = [0, 0, 0]
         # effectorID = 28: right hand
-        self.effectorId = 28
+        # effectorID = 59: left hand
+        self.effectorId = 59
         self.effector_pos = None
         # joint information
         # jointName, (jointLowerLimit, jointUpperLimit), jointMaxForce, jointMaxVelocity, linkName, parentIndex
@@ -64,7 +65,7 @@ class Inmoov:
         """
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
-        p.setGravity(0., 0., -10.)
+        p.setGravity(0., 0., GRAVITY)
 
         self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
         self.get_joint_info()
@@ -254,6 +255,10 @@ class Inmoov:
                 # jointName, (jointLowerLimit, jointUpperLimit), jointMaxForce, jointMaxVelocity, linkName, parentIndex
                 # (info[1], (info[8], info[9]), info[10], info[11], info[12], info[16])
                 self.joint_name[i] = info[1]
+                if info[1] == b'right_bicep':
+                    printYellow(info)
+                if info[1] == b'left_bicep':
+                    printGreen(info)
                 self.joint_lower_limits.append(info[8])
                 self.joint_upper_limits.append(info[9])
                 self.jointMaxForce.append(info[10])
