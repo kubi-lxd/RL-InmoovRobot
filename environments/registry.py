@@ -17,6 +17,7 @@ from environments.mobile_robot.mobile_robot_line_target_env import MobileRobotLi
 # from environments.robobo_gym.robobo_env import RoboboEnv
 # from environments.omnirobot_gym.omnirobot_env import OmniRobotEnv
 from environments.inmoov.inmoov_p2p import InmoovGymEnv
+
 def register(_id, **kvargs):
     if _id in registry.env_specs:
         return

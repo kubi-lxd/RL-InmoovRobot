@@ -51,6 +51,7 @@ def makeEnv(env_id, seed, rank, log_dir, allow_early_resets=False, env_kwargs=No
             local_env_kwargs = dict(env_kwargs)  # copy this to avoid altering the others
         else:
             local_env_kwargs = {}
+
         local_env_kwargs["env_rank"] = rank
         env = _make(env_id, env_kwargs=local_env_kwargs)
         env.seed(seed + rank)
