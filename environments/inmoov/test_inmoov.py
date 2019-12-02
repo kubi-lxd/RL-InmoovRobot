@@ -9,12 +9,12 @@ from environments.inmoov.inmoov import Inmoov
 from environments.inmoov.inmoov_p2p import InmoovGymEnv
 
 def test_inmoov():
-    robot = Inmoov(debug_mode=False)
+    robot = Inmoov(debug_mode=True)
     # _urdf_path = pybullet_data.getDataPath()
     _urdf_path = "/home/tete/work/SJTU/inmoov/robotics-rl-srl/pybullet_data"
     planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
     # stadiumId = p.loadSDF(os.path.join(_urdf_path, "stadium.sdf"))
-    sjtu_urdf_path = "/home/tete/work/SJTU/kuka_play/robotics-rl-srl/urdf_robot"
+    sjtu_urdf_path = "/urdf_robot/"
     # tomato1Id = p.loadURDF(os.path.join(sjtu_urdf_path, "tomato_plant.urdf"), [0,1,0.5] )
     tomato2Id = p.loadURDF(os.path.join(sjtu_urdf_path, "tomato_plant.urdf"), [0.4, 0.4, 0.5],
                            baseOrientation=[0, 0, 0, 1])
@@ -49,5 +49,5 @@ def test_inmoov_gym():
 
 
 if __name__ == '__main__':
-    test_inmoov_gym()
-    # test_inmoov()
+    # test_inmoov_gym()
+    test_inmoov()

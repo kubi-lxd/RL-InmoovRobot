@@ -7,7 +7,7 @@ from ipdb import set_trace as tt
 
 from util.color_print import printGreen, printBlue, printRed, printYellow
 from environments.inmoov.joints_registry import joint_registry, control_joint
-URDF_PATH = "/home/tete/work/SJTU/inmoov/robotics-rl-srl/urdf_robot/"
+URDF_PATH = "/urdf_robot/"
 GRAVITY = -9.8
 RENDER_WIDTH, RENDER_HEIGHT = 512, 512
 CONTROL_JOINT = list(control_joint.keys())
@@ -40,23 +40,23 @@ class Inmoov:
         self.positional_control = positional_control
         # inverse Kinematic solver, ref: Pybullet
         self.use_null_space = use_null_space
-        # if self.debug_mode:
-        #     client_id = p.connect(p.SHARED_MEMORY)
-        #     if client_id < 0:
-        #         p.connect(p.GUI)
-        #     p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.2, -0.33])
-        #
-        #     # To debug the joints of the Inmoov robot
-        #     debug_joints = []
-        #     self.joints_key = []
-        #     for joint_index in joint_registry:
-        #         self.joints_key.append(joint_index)
-        #         debug_joints.append(p.addUserDebugParameter(joint_registry[joint_index], -1., 1., 0))
-        #     self.debug_joints = debug_joints
-        # else:
-        #     p.connect(p.DIRECT)
-        # global CONNECTED_TO_SIMULATOR
-        # CONNECTED_TO_SIMULATOR = True
+        if self.debug_mode:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
+                p.connect(p.GUI)
+            p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.2, -0.33])
+
+            # To debug the joints of the Inmoov robot
+            debug_joints = []
+            self.joints_key = []
+            for joint_index in joint_registry:
+                self.joints_key.append(joint_index)
+                debug_joints.append(p.addUserDebugParameter(joint_registry[joint_index], -1., 1., 0))
+            self.debug_joints = debug_joints
+        else:
+            p.connect(p.DIRECT)
+        global CONNECTED_TO_SIMULATOR
+        CONNECTED_TO_SIMULATOR = True
         self.reset()
 
     def reset(self):
