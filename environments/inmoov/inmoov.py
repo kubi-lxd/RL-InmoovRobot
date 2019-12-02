@@ -24,7 +24,7 @@ class Inmoov:
         self.robot_base_pos = [0, 0, 0]
         # effectorID = 28: right hand
         # effectorID = 59: left hand
-        self.effectorId = 59
+        self.effectorId = 28
         self.effector_pos = None
         # joint information
         # jointName, (jointLowerLimit, jointUpperLimit), jointMaxForce, jointMaxVelocity, linkName, parentIndex
@@ -40,36 +40,37 @@ class Inmoov:
         self.positional_control = positional_control
         # inverse Kinematic solver, ref: Pybullet
         self.use_null_space = use_null_space
-        if self.debug_mode:
-            client_id = p.connect(p.SHARED_MEMORY)
-            if client_id < 0:
-                p.connect(p.GUI)
-            p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.2, -0.33])
-
-            # To debug the joints of the Inmoov robot
-            debug_joints = []
-            self.joints_key = []
-            for joint_index in joint_registry:
-                self.joints_key.append(joint_index)
-                debug_joints.append(p.addUserDebugParameter(joint_registry[joint_index], -1., 1., 0))
-            self.debug_joints = debug_joints
-        else:
-            p.connect(p.DIRECT)
-        global CONNECTED_TO_SIMULATOR
-        CONNECTED_TO_SIMULATOR = True
+        # if self.debug_mode:
+        #     client_id = p.connect(p.SHARED_MEMORY)
+        #     if client_id < 0:
+        #         p.connect(p.GUI)
+        #     p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.2, -0.33])
+        #
+        #     # To debug the joints of the Inmoov robot
+        #     debug_joints = []
+        #     self.joints_key = []
+        #     for joint_index in joint_registry:
+        #         self.joints_key.append(joint_index)
+        #         debug_joints.append(p.addUserDebugParameter(joint_registry[joint_index], -1., 1., 0))
+        #     self.debug_joints = debug_joints
+        # else:
+        #     p.connect(p.DIRECT)
+        # global CONNECTED_TO_SIMULATOR
+        # CONNECTED_TO_SIMULATOR = True
         self.reset()
 
     def reset(self):
         """
         Reset the environment
         """
-        p.resetSimulation()
-        p.setPhysicsEngineParameter(numSolverIterations=150)
-        p.setGravity(0., 0., GRAVITY)
+        # p.resetSimulation()
+        # p.setPhysicsEngineParameter(numSolverIterations=150)
+        # p.setGravity(0., 0., GRAVITY)
 
         self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
-        self.get_joint_info()
         self.num_joints = p.getNumJoints(self.inmoov_id)
+        self.get_joint_info()
+
         # tmp1 = p.getNumBodies(self.inmoov_id)  # Equal to 1, only one body
         # tmp2 = p.getNumConstraints(self.inmoov_id)  # Equal to 0, no constraint?
         # tmp3 = p.getBodyUniqueId(self.inmoov_id)  # res = 0, do not understand
@@ -121,9 +122,9 @@ class Inmoov:
         else:
             return len(self.joints_key)
 
-    def __del__(self):
-        if CONNECTED_TO_SIMULATOR:
-            p.disconnect()
+    # def __del__(self):
+    #     if CONNECTED_TO_SIMULATOR:
+    #         p.disconnect()
 
     def step(self, action):
         raise NotImplementedError
@@ -177,7 +178,7 @@ class Inmoov:
         #                             controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
         #                             targetVelocity=0, force=self.max_force,
         #                             maxVelocity=4., positionGain=0.3, velocityGain=1)
-        p.stepSimulation()
+        # p.stepSimulation()
 
     def apply_action_pos(self, motor_commands):
         """
@@ -217,13 +218,14 @@ class Inmoov:
                                                        )
         else:  # use regular KI solution
             joint_poses = p.calculateInverseKinematics(self.inmoov_id, self.effectorId, target_pos)
+        # printGreen(joint_poses)
         p.setJointMotorControlArray(self.inmoov_id, self.joints_key,
                                     controlMode=p.POSITION_CONTROL,
                                     targetPositions=joint_poses,
                                     targetVelocities=target_velocity,
                                     #  maxVelocities=self.jointMaxVelocity,
                                     forces=self.jointMaxForce)
-
+        p.stepSimulation()
         # for i, index in enumerate(self.joints_key):
         #     joint_info = self.joint_name[index]
         #     jointMaxForce, jointMaxVelocity = joint_info[2:4]
@@ -232,7 +234,7 @@ class Inmoov:
         #                             targetPosition=joint_poses[i], targetVelocity=0, force=self.max_force,
         #                             maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
 
-        p.stepSimulation()
+
 
     def get_joint_info(self):
         """
@@ -243,6 +245,7 @@ class Inmoov:
         - we have 53 revo
         :return:
         """
+
         self.joints_key = []
         self.joint_lower_limits, self.joint_upper_limits, self.jointMaxForce, self.jointMaxVelocity = [], [], [], []
         for i in range(self.num_joints):

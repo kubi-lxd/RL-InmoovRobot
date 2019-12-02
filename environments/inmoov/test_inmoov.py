@@ -4,12 +4,12 @@ import time
 import pybullet as p
 import pybullet_data
 import numpy as np
-
+from ipdb import set_trace as tt
 from environments.inmoov.inmoov import Inmoov
 from environments.inmoov.inmoov_p2p import InmoovGymEnv
 
 def test_inmoov():
-    robot = Inmoov(debug_mode=True)
+    robot = Inmoov(debug_mode=False)
     # _urdf_path = pybullet_data.getDataPath()
     _urdf_path = "/home/tete/work/SJTU/inmoov/robotics-rl-srl/pybullet_data"
     planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
@@ -30,7 +30,7 @@ def test_inmoov():
         # robot.debugger_step()
         # print("Step {}".format(i))
         i += 1
-        robot.apply_action_pos(motor_commands=[0.1, 0., 0.00])
+        robot.apply_action_pos(motor_commands=[0.0, 0.02, -0.01])
         # robot.getGroundTruth()
         # robot.render(2)
         # if i%100 == 0:
@@ -42,10 +42,12 @@ def test_inmoov():
 
 def test_inmoov_gym():
     robot = InmoovGymEnv(debug_mode=True)
+
     while True:
         time.sleep(0.05)
-        robot.step([0.1,0.1,0.0])
+        robot.step([-0.1,0.0,0.0])
 
 
 if __name__ == '__main__':
     test_inmoov_gym()
+    # test_inmoov()

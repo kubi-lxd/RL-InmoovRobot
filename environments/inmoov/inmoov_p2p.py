@@ -3,6 +3,7 @@ from stable_baselines import PPO2
 import pybullet as p
 import numpy as np
 from gym import spaces
+from util.color_print import printGreen, printBlue, printRed, printYellow
 import gym
 from ipdb import set_trace as tt
 from environments.inmoov import inmoov
@@ -17,6 +18,15 @@ class InmoovGymEnv(gym.Env):
         self._observation = None
         self.debug_mode = debug_mode
         self._inmoov = None
+
+        if debug_mode:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
+                p.connect(p.GUI)
+            p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.2, -0.33])
+        else:
+            p.connect(p.DIRECT)
+
         self.reset()
 
     def reset(self):
@@ -25,7 +35,7 @@ class InmoovGymEnv(gym.Env):
         self.n_steps_outside = 0
         p.resetSimulation()
         p.setPhysicsEngineParameter(numSolverIterations=150)
-        p.loadURDF(os.path.join("/home/tete/work/SJTU/inmoov/robotics-rl-srl/pybullet_data", "plane.urdf"), [0, 0, -1])
+        p.loadURDF(os.path.join("/home/tete/work/SJTU/inmoov/robotics-rl-srl/pybullet_data", "plane.urdf"), [0, 0, 0])
         p.setGravity(0, 0, -10)
 
         self._inmoov = inmoov.Inmoov(urdf_path=self.urdf_path, positional_control=True)
@@ -42,8 +52,14 @@ class InmoovGymEnv(gym.Env):
         # TODO
         return
 
+    def effector_position(self):
+        return self._inmoov.getGroundTruth()
+
     def step(self, action):
         self._inmoov.apply_action_pos(action)
+        p.stepSimulation()
+        # printGreen(action)
+        # printYellow(self._inmoov.getGroundTruth())
         # tt()
         # self._observation = self.render(mode='rgb')
         # reward = self._reward()
