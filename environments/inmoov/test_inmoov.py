@@ -44,10 +44,10 @@ def test_inmoov_gym():
     robot = InmoovGymEnv(debug_mode=True)
 
     while True:
-        time.sleep(0.05)
-        robot.step([-0.1,0.0,0.0])
-
+        time.sleep(0.5)
+        # robot.step([-0.1,0.0,0.0])
+        robot.step()
 
 if __name__ == '__main__':
-    # test_inmoov_gym()
-    test_inmoov()
+    test_inmoov_gym()
+    # test_inmoov()
