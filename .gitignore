@@ -4,12 +4,10 @@
 *.pt
 *.pth
 data/
-/urdf_robot/
-urdf_robot/
-/urdf/
 trained_models/
 pybullet_data/
-!/urdf_robot/urdf_note.md
+urdf_robot/
+urdf/
 logs/
 logs_real/
 *.bak
@@ -119,5 +117,3 @@ ENV/
 
 # mypy
 .mypy_cache/
-
-
