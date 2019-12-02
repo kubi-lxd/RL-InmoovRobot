@@ -103,7 +103,7 @@ class KukaButtonGymEnv(SRLGymEnv):
         self._is_discrete = is_discrete
         self.terminated = False
         self.renderer = p.ER_TINY_RENDERER
-        self.debug = True
+        self.debug = False
         self.n_contacts = 0
         self.state_dim = state_dim
         self.action_joints = action_joints
@@ -313,7 +313,7 @@ class KukaButtonGymEnv(SRLGymEnv):
             finger_angle = 0.0  # Close the gripper
             # real_action = [dx, dy, -0.002, da, finger_angle]
             real_action = [dx, dy, dz, 0, finger_angle]
-            print("Action: [dx, dy, dz, 0, finger_angle]: {}".format(real_action))
+            # print("Action: [dx, dy, dz, 0, finger_angle]: {}".format(real_action))
         else:
             if self.action_joints:
                 arm_joints = np.array(self._kuka.joint_positions)[:7]

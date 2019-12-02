@@ -16,6 +16,7 @@ from environments.mobile_robot.mobile_robot_line_target_env import MobileRobotLi
 # from environments.gym_baxter.baxter_env import BaxterEnv
 # from environments.robobo_gym.robobo_env import RoboboEnv
 # from environments.omnirobot_gym.omnirobot_env import OmniRobotEnv
+from environments.inmoov.inmoov_p2p import InmoovGymEnv
 
 def register(_id, **kvargs):
     if _id in registry.env_specs:
@@ -47,6 +48,7 @@ registered_env = {
     "MobileRobot2TargetGymEnv-v0":    (MobileRobot2TargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobot1DGymEnv-v0":         (MobileRobot1DGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobotLineTargetGymEnv-v0": (MobileRobotLineTargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
+    "InmoovGymEnv-v0":                (InmoovGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS )
     #"Baxter-v0":                      (BaxterEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.NONE),
     #"RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE),
     #"OmnirobotEnv-v0":                (OmniRobotEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
