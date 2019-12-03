@@ -19,10 +19,17 @@ def getGlobals():
     """
     return globals()
 
+
 class InmoovGymEnv(SRLGymEnv):
     def __init__(self, urdf_path=URDF_PATH, max_steps=1000,
+                 env_rank=0,
+                 srl_pipe=None,
                  action_repeat=1, srl_model="ground_truth",
-                 multi_view=False, seed=0, debug_mode=True, **kwargs):
+                 multi_view=False, seed=0, debug_mode=False, **kwargs):
+        super(InmoovGymEnv, self).__init__(srl_model=srl_model,
+                                           relative_pos=True,
+                                           env_rank=env_rank,
+                                           srl_pipe=srl_pipe)
         self.seed(seed)
         self.urdf_path = urdf_path
 
@@ -55,7 +62,7 @@ class InmoovGymEnv(SRLGymEnv):
             p.connect(p.DIRECT)
 
         # TODO: here, we only use, for the moment, discrete action
-        self.action_space = spaces.Discrete(6)
+        self.action_space = spaces.Discrete(15)
         if self.srl_model == "raw_pixels":
             self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
         else:  # Todo: the only possible observation for srl_model is ground truth
@@ -109,20 +116,33 @@ class InmoovGymEnv(SRLGymEnv):
     def effector_position(self):
         return self._inmoov.getGroundTruth()
 
-    def step(self, action):
-        if action is None:
-            action = np.array([0, 0, 0])
-        dv = 0.05
-        dx = [-dv, dv, 0, 0, 0, 0][action]
-        dy = [0, 0, -dv, dv, 0, 0][action]
-        dz = [0, 0, 0, 0, -dv, dv][action]
-
-        action = [dx, dy, dz]
-        print(action)
-        # tomato_pos = self._get_tomato_pos()
-        # eff_pos = self._get_effector_pos()
-        # action = tomato_pos - eff_pos
+    def guided_step(self):
+        tomato_pos = self._get_tomato_pos()
+        eff_pos = self._get_effector_pos()
+        action = tomato_pos - eff_pos
         self._inmoov.apply_action_pos(action)
+
+
+
+    def step(self, action):
+        print(action)
+        if action == 12:
+            self.guided_step()
+        else:
+            self._inmoov.apply_action_pos([0,0,0])
+
+        # if action is None:
+        #     action = np.array([0, 0, 0])
+        # dv = 0.05
+        # dx = [-dv, dv, 0, 0, 0, 0][action]
+        # dy = [0, 0, -dv, dv, 0, 0][action]
+        # dz = [0, 0, 0, 0, -dv, dv][action]
+        #
+        # action = [dx, dy, dz]
+        # # tomato_pos = self._get_tomato_pos()
+        # # eff_pos = self._get_effector_pos()
+        # # action = tomato_pos - eff_pos
+        # self._inmoov.apply_action_pos(action)
         p.stepSimulation()
         self._step_counter += 1
         reward = self._reward()
@@ -141,13 +161,14 @@ class InmoovGymEnv(SRLGymEnv):
         # return np.array(self._observation), reward, done, {}
 
     def get_observation(self):
-        if self.srl_model == "raw_pixel":
+        if self.srl_model == "raw_pixels":
             self._observation = self.render(mode="rgb")
+            return self._observation
         elif self.srl_model == "ground_truth":
             self._observation = self.ground_truth()
+            return self.ground_truth()
         else:
             raise NotImplementedError
-        return self._observation
 
 
     def render(self, mode='rgb'):
