@@ -7,6 +7,7 @@ data/
 trained_models/
 pybullet_data/
 urdf_robot/
+!/urdf_robot/urdf_note.md
 urdf/
 logs/
 logs_real/
@@ -117,3 +118,5 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+

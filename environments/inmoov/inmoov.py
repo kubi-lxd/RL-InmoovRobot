@@ -7,6 +7,7 @@ from ipdb import set_trace as tt
 
 from util.color_print import printGreen, printBlue, printRed, printYellow
 from environments.inmoov.joints_registry import joint_registry, control_joint
+
 URDF_PATH = "/urdf_robot/"
 GRAVITY = -9.8
 RENDER_WIDTH, RENDER_HEIGHT = 512, 512
