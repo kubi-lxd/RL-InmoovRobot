@@ -11,7 +11,11 @@ from environments.inmoov import inmoov
 from environments.srl_env import SRLGymEnv
 GRAVITY = -9.8
 URDF_PATH = "/urdf_robot/"
-RENDER_WIDTH, RENDER_HEIGHT = 512, 512
+RENDER_WIDTH, RENDER_HEIGHT = 224, 224
+
+
+# python -m rl_baselines.train --env InmoovGymEnv-v0 --srl-model ground_truth --algo ppo2 --log-dir logs/
+# --num-timesteps 200000
 
 def getGlobals():
     """
@@ -25,7 +29,7 @@ class InmoovGymEnv(SRLGymEnv):
                  env_rank=0,
                  srl_pipe=None,
                  action_repeat=1, srl_model="ground_truth",
-                 multi_view=False, seed=0, debug_mode=False, **kwargs):
+                 multi_view=False, seed=0, debug_mode=True, **kwargs):
         super(InmoovGymEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=True,
                                            env_rank=env_rank,
@@ -53,6 +57,8 @@ class InmoovGymEnv(SRLGymEnv):
         self._height = RENDER_HEIGHT
         self.terminated = False
         self.n_contacts = 0
+        self.state_dim = self.getGroundTruthDim()
+
         if debug_mode:
             client_id = p.connect(p.SHARED_MEMORY)
             if client_id < 0:
@@ -62,7 +68,7 @@ class InmoovGymEnv(SRLGymEnv):
             p.connect(p.DIRECT)
 
         # TODO: here, we only use, for the moment, discrete action
-        self.action_space = spaces.Discrete(15)
+        self.action_space = spaces.Discrete(6)
         if self.srl_model == "raw_pixels":
             self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
         else:  # Todo: the only possible observation for srl_model is ground truth
@@ -86,6 +92,8 @@ class InmoovGymEnv(SRLGymEnv):
         # p.resetSimulation()
         # p.setPhysicsEngineParameter(numSolverIterations=150)
         # p.setGravity(0., 0., GRAVITY)
+        return self.get_observation()
+
     def _get_effector_pos(self):
         return self._inmoov.getGroundTruth()
 
@@ -99,6 +107,20 @@ class InmoovGymEnv(SRLGymEnv):
     def ground_truth(self):
         # a relative position
         return self._get_effector_pos() - self._get_tomato_pos()
+
+    def getSRLState(self, observation=None):
+        if self.srl_model == "ground_truth":
+            return self.ground_truth()
+
+    def getGroundTruth(self):
+        return np.array(self._get_effector_pos())
+
+    def getTargetPos(self):
+        return self._get_tomato_pos()
+
+    def getGroundTruthDim(self):
+        return 3
+
 
     def _reward(self):
         distance = np.linalg.norm(self._get_effector_pos() - self._get_tomato_pos(), 2)
@@ -125,24 +147,19 @@ class InmoovGymEnv(SRLGymEnv):
 
 
     def step(self, action):
-        print(action)
-        if action == 12:
-            self.guided_step()
-        else:
-            self._inmoov.apply_action_pos([0,0,0])
-
-        # if action is None:
-        #     action = np.array([0, 0, 0])
-        # dv = 0.05
-        # dx = [-dv, dv, 0, 0, 0, 0][action]
-        # dy = [0, 0, -dv, dv, 0, 0][action]
-        # dz = [0, 0, 0, 0, -dv, dv][action]
-        #
-        # action = [dx, dy, dz]
-        # # tomato_pos = self._get_tomato_pos()
-        # # eff_pos = self._get_effector_pos()
-        # # action = tomato_pos - eff_pos
-        # self._inmoov.apply_action_pos(action)
+        # if action == 5:
+        #     self.guided_step()
+        if action is None:
+            action = np.array([0, 0, 0])
+        dv = 0.05
+        dx = [-dv, dv, 0, 0, 0, 0][action]
+        dy = [0, 0, -dv, dv, 0, 0][action]
+        dz = [0, 0, 0, 0, -dv, dv][action]
+        action = [dx, dy, dz]
+        tomato_pos = self._get_tomato_pos()
+        eff_pos = self._get_effector_pos()
+        action = tomato_pos - eff_pos
+        self._inmoov.apply_action_pos(action)
         p.stepSimulation()
         self._step_counter += 1
         reward = self._reward()

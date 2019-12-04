@@ -19,7 +19,6 @@ def test_inmoov():
     tomato2Id = p.loadURDF(os.path.join(sjtu_urdf_path, "tomato_plant.urdf"), [0.4, 0.4, 0.5],
                            baseOrientation=[0, 0, 0, 1])
     # robot = Inmoov()
-    num_joint = robot.get_action_dimension()
     i = 0
 
     robot.get_joint_info()
@@ -30,7 +29,9 @@ def test_inmoov():
         # robot.debugger_step()
         # print("Step {}".format(i))
         i += 1
-        robot.apply_action_pos(motor_commands=[0.0, 0.02, -0.01])
+        # robot.apply_action_joints(motor_commands=np.random.uniform(-1,1,len(robot.joints_key)))
+        #robot.apply_action_pos(motor_commands=[0.0, 0.02, -0.01])
+        robot.debugger_step()
         # robot.getGroundTruth()
         # robot.render(2)
         # if i%100 == 0:
@@ -44,13 +45,11 @@ def test_inmoov_gym():
     robot = InmoovGymEnv(debug_mode=True)
 
     while True:
-        time.sleep(0.1)
+        time.sleep(0.5)
         # robot.step([-0.1,0.0,0.0])
-        tt()
-        for i in range(6):
-            for k in range(10):
-                robot.step(i)
+        robot.guided_step()
+        # robot.step()
 
 if __name__ == '__main__':
-    test_inmoov_gym()
-    # test_inmoov()
+    # test_inmoov_gym()
+    test_inmoov()

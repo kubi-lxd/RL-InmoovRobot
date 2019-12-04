@@ -232,7 +232,6 @@ class StableBaselinesRLObject(BaseRLObject):
             envs = self.makeEnv(args, env_kwargs=env_kwargs,load_path_normalise=load_path_normalise)
         else:
             envs = self.makeEnv(args, env_kwargs=env_kwargs)
-
         if train_kwargs is None:
             train_kwargs = {}
 
