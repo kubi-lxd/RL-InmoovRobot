@@ -5,9 +5,9 @@ import pybullet as p
 
 from environments.inmoov.joints_registry import joint_registry
 # debugger
-# from ipdb import set_trace as tt
+from ipdb import set_trace as tt
 # colorful print
-# from util.color_print import printGreen, printBlue, printRed, printYellow
+from util.color_print import printGreen, printBlue, printRed, printYellow
 
 
 URDF_PATH = "/urdf_robot/"
@@ -29,7 +29,7 @@ class Inmoov:
 
         """
         self.urdf_path = urdf_path
-        self._renders = True
+        self._renders = False
         self.debug_mode = debug_mode
         self.inmoov_id = -1
         self.num_joints = -1  # number of the joints
@@ -69,7 +69,10 @@ class Inmoov:
                 # This will add some slider on the GUI
                 debug_joints.append(p.addUserDebugParameter(joint_registry[joint_index], -1., 1., 0))
             self.debug_joints = debug_joints
-
+        else:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
+                p.connect(p.DIRECT)
         self.reset()
 
     def reset(self):
@@ -83,7 +86,7 @@ class Inmoov:
             p.resetJointState(self.inmoov_id, jointIndex, 0.)
         # get the effector world position
         self.effector_pos = p.getLinkState(self.inmoov_id, self.effectorId)[0]
-
+        plt.ion()
         # # get link information
         # ######################## debug part #######################
         # # this debug part will plot a 3D representation of the inmoov annotated links
@@ -290,6 +293,7 @@ class Inmoov:
             p.resetJointState(self.inmoov_id, joint_key, targetValue=joint_state)
         p.stepSimulation()
 
+        self.robot_render()
         # These lines will let the camera information project on the GUI, so set self._renders True to see it
         if self._renders:
             view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
@@ -316,8 +320,53 @@ class Inmoov:
     def robot_render(self):
         """
         The image from the robot eye
+        link 17 and 21
         :return:
         """
+        right_eye_state = p.getLinkState(self.inmoov_id, 17)
+        left_eye = p.getLinkState(self.inmoov_id, 21)
+        right_eye_pos = np.array(right_eye_state[0])
+        right_eye_orn = right_eye_state[1]
+
+        right_eye_euler = p.getEulerFromQuaternion(right_eye_orn)
+        theta, phi = right_eye_euler[0], right_eye_euler[2]
+        focus = 2
+        # TODO: bad angle
+        target_pos = right_eye_pos + 2*np.array([np.cos(theta)*np.cos(phi), np.cos(theta)*np.sin(phi), np.sin(theta)])[[1,0,2]]
+        printBlue(right_eye_euler)
+        # right_eye_matrix= np.array(p.getMatrixFromQuaternion(right_eye_orn)).reshape(3,3)
+        #
+        # target_pos = np.array(right_eye_pos) + right_eye_matrix@origin_pos
+        # printRed(target_pos)
+        # right_eye_matrix = p.computeViewMatrix(
+        #     cameraEyePosition = right_eye_pos,
+        #     cameraTargetPosition = target_pos,
+        #     cameraUpVector = [0, 0, 0]
+        # )
+
+        right_eye_matrix = p.computeViewMatrixFromYawPitchRoll(
+            cameraTargetPosition=target_pos,
+            distance=2.,
+            yaw=right_eye_euler[0],
+            pitch=right_eye_euler[1],
+            roll=right_eye_euler[2],
+            upAxisIndex=2
+        )
+        right_proj_matrix = p.computeProjectionMatrixFOV(
+            fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+            nearVal=0.1, farVal=100.0)
+        # depth: the depth camera, mask: mask on different body ID
+        (_, _, px, depth, mask) = p.getCameraImage(
+            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=right_eye_matrix,
+            projectionMatrix=right_proj_matrix, renderer=p.ER_TINY_RENDERER)
+        px, depth, mask = np.array(px), np.array(depth), np.array(mask)
+
+        # plt.figure(figsize=[5,5])
+        # plt.imshow(px)
+        # plt.draw()
+        # # To avoid too fast drawing conflict
+        # plt.pause(0.00001)
+
         # TODO
 
     def render(self, num_camera=1):
@@ -402,4 +451,3 @@ class Inmoov:
             plt.draw()
             # To avoid too fast drawing conflict
             plt.pause(0.00001)
-
