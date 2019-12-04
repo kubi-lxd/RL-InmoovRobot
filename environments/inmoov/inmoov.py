@@ -274,6 +274,7 @@ class Inmoov:
 
     def debugger_step(self):
         """
+        控制 debug slider来控制机器人
         if you run self.debugger_step, the sliders on the GUI will be activated and keep catching info from sliders,
         and control the joints as you indicated
         :return:

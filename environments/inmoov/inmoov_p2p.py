@@ -1,12 +1,10 @@
 import os
-from stable_baselines import PPO2
 import pybullet as p
 import pybullet_data
 import numpy as np
 from gym import spaces
 from util.color_print import printGreen, printBlue, printRed, printYellow
 import gym
-from ipdb import set_trace as tt
 from environments.inmoov import inmoov
 from environments.srl_env import SRLGymEnv
 GRAVITY = -9.8
@@ -29,11 +27,24 @@ class InmoovGymEnv(SRLGymEnv):
                  env_rank=0,
                  srl_pipe=None,
                  action_repeat=1, srl_model="ground_truth",
-                 multi_view=False, seed=0, debug_mode=True, **kwargs):
+                 seed=0, debug_mode=True, **kwargs):
+        """
+
+        :param urdf_path:
+        :param max_steps:
+        :param env_rank:
+        :param srl_pipe:
+        :param action_repeat:
+        :param srl_model:
+        :param seed: (int) the random seed for the GymEnv
+        :param debug_mode: (bool) if True, the GUI will show up during the training (or for dug purpose)
+        :param kwargs:
+        """
         super(InmoovGymEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=True,
                                            env_rank=env_rank,
                                            srl_pipe=srl_pipe)
+
         self.seed(seed)
         self.urdf_path = urdf_path
 
@@ -41,13 +52,12 @@ class InmoovGymEnv(SRLGymEnv):
         self.debug_mode = debug_mode
         self._inmoov = None
         self._observation = None
-
-
+        self.action_repeat = action_repeat
         self._inmoov_id = -1
         self._tomato_id = -1
         self.max_steps = max_steps
         self._step_counter = 0
-
+        self._render = False
         # for more information, please refer to the function _get_tomato_pos
         self._tomato_link_id = 3
 
@@ -109,6 +119,7 @@ class InmoovGymEnv(SRLGymEnv):
         return self._get_effector_pos() - self._get_tomato_pos()
 
     def getSRLState(self, observation=None):
+        # TODO: raw pixels
         if self.srl_model == "ground_truth":
             return self.ground_truth()
 
@@ -118,9 +129,9 @@ class InmoovGymEnv(SRLGymEnv):
     def getTargetPos(self):
         return self._get_tomato_pos()
 
-    def getGroundTruthDim(self):
+    @staticmethod
+    def getGroundTruthDim():
         return 3
-
 
     def _reward(self):
         distance = np.linalg.norm(self._get_effector_pos() - self._get_tomato_pos(), 2)
@@ -139,14 +150,18 @@ class InmoovGymEnv(SRLGymEnv):
         return self._inmoov.getGroundTruth()
 
     def guided_step(self):
+        """
+        Effect a guided step towards the target
+        :return:
+        """
         tomato_pos = self._get_tomato_pos()
         eff_pos = self._get_effector_pos()
         action = tomato_pos - eff_pos
         self._inmoov.apply_action_pos(action)
 
 
-
     def step(self, action):
+        # TODO: bug might be here
         # if action == 5:
         #     self.guided_step()
         if action is None:
@@ -156,17 +171,16 @@ class InmoovGymEnv(SRLGymEnv):
         dy = [0, 0, -dv, dv, 0, 0][action]
         dz = [0, 0, 0, 0, -dv, dv][action]
         action = [dx, dy, dz]
-        tomato_pos = self._get_tomato_pos()
-        eff_pos = self._get_effector_pos()
-        action = tomato_pos - eff_pos
-        self._inmoov.apply_action_pos(action)
-        p.stepSimulation()
+        for i in range(self.action_repeat):
+            self._inmoov.apply_action_pos(action)
+            p.stepSimulation()
         self._step_counter += 1
         reward = self._reward()
         obs = self.get_observation()
         done = self._termination()
         infos = {}
-        # printYellow("reward is : {:.2f}".format(reward))
+        if self._render and self.debug_mode:
+            self.render()
         return np.array(obs), reward, done, infos
         # printGreen(action)
         # printYellow(self._inmoov.getGroundTruth())
@@ -189,6 +203,11 @@ class InmoovGymEnv(SRLGymEnv):
 
 
     def render(self, mode='rgb'):
+        """
+        return the RBG image
+        :param mode:
+        :return:
+        """
         camera_target_position = self.camera_target_pos
         view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
             cameraTargetPosition=camera_target_position,

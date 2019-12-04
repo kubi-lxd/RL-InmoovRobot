@@ -18,3 +18,18 @@ To run some test code for the inmoov environement
 
 对于inmoov debug模式下不能显示全部joints的情况，暂时还无法解决，我给pybullet发了一个[issue](https://github.com/bulletphysics/bullet3/issues/2519)。目前比较好的解决方案是在
 `joints_registry`里面改一下，注释掉不想看到的joints。
+
+To train your first model (bugs alert!)
+--------------------------------
+环境还没有完全干净，里面可能存在些许问题，但是目前的进度允许我们进行简单的训练。
+同样，请先到达项目的根目录。
+
+- launch a ``visdom`` server to monitor the training process by: 
+```
+python -m visdom.server
+```
+
+- launch the training process:
+```
+python -m rl_baselines.train --env InmoovGymEnv-v0 --srl-model ground_truth --algo ppo2 --log-dir logs/ --num-timesteps 2000000
+```
