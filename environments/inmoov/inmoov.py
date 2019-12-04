@@ -1,28 +1,39 @@
 import os
-
 import numpy as np
 from matplotlib import pyplot as plt
 import pybullet as p
-from ipdb import set_trace as tt
 
-from util.color_print import printGreen, printBlue, printRed, printYellow
-from environments.inmoov.joints_registry import joint_registry, control_joint
+from environments.inmoov.joints_registry import joint_registry
+# debugger
+# from ipdb import set_trace as tt
+# colorful print
+# from util.color_print import printGreen, printBlue, printRed, printYellow
+
 
 URDF_PATH = "/urdf_robot/"
 GRAVITY = -9.8
-RENDER_WIDTH, RENDER_HEIGHT = 512, 512
-CONTROL_JOINT = list(control_joint.keys())
-CONTROL_JOINT.sort()
+# 修改这里来改变图像的尺寸
+RENDER_WIDTH, RENDER_HEIGHT = 224, 224
 
 
 class Inmoov:
     def __init__(self, urdf_path=URDF_PATH, positional_control=True, debug_mode=False, use_null_space=True):
+        """
+        To initialize an inmoov robot with controlable joint
+        :param urdf_path: (str) the path to the file, where the inmoov robot urdf file is
+        :param positional_control: (bool)
+        :param debug_mode: (bool) if True, it will give us a pybullet GUI interface
+        :param use_null_space: (bool) the parameter for the inverseKinetic solver, since the solution
+        to a inverse Kinetic problem can be non-unique, it will give us a solution that be
+        constrained in the feasible domain defined in the urdf file.
+
+        """
         self.urdf_path = urdf_path
         self._renders = True
         self.debug_mode = debug_mode
         self.inmoov_id = -1
-        self.num_joints = -1
-        self.robot_base_pos = [0, 0, 0]
+        self.num_joints = -1  # number of the joints
+        self.robot_base_pos = [0, 0, 0]  # the base position of inmoov robot
         # effectorID = 28: right hand
         # effectorID = 59: left hand
         self.effectorId = 28
@@ -41,23 +52,24 @@ class Inmoov:
         self.positional_control = positional_control
         # inverse Kinematic solver, ref: Pybullet
         self.use_null_space = use_null_space
-        # if self.debug_mode:
-        #     client_id = p.connect(p.SHARED_MEMORY)
-        #     if client_id < 0:
-        #         p.connect(p.GUI)
-        #     p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.2, -0.33])
-        #
-        #     # To debug the joints of the Inmoov robot
-        #     debug_joints = []
-        #     self.joints_key = []
-        #     for joint_index in joint_registry:
-        #         self.joints_key.append(joint_index)
-        #         debug_joints.append(p.addUserDebugParameter(joint_registry[joint_index], -1., 1., 0))
-        #     self.debug_joints = debug_joints
-        # else:
-        #     p.connect(p.DIRECT)
-        # global CONNECTED_TO_SIMULATOR
-        # CONNECTED_TO_SIMULATOR = True
+        if self.debug_mode:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
+                p.connect(p.GUI)
+            # The camera information for debug (GUI graphical interface)
+            p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.2, -0.33])
+            # To debug the joints of the Inmoov robot
+            debug_joints = []
+            self.joints_key = []
+            # I dig out the joint information (Name and order) manually and store it in to the joint_registry file
+            # In fact this is a little bit stupid, the correct way to get joint information is to be found in the
+            # function self.get_joint_info()
+            for joint_index in joint_registry:
+                self.joints_key.append(joint_index)
+                # This will add some slider on the GUI
+                debug_joints.append(p.addUserDebugParameter(joint_registry[joint_index], -1., 1., 0))
+            self.debug_joints = debug_joints
+
         self.reset()
 
     def reset(self):
@@ -67,16 +79,14 @@ class Inmoov:
         self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
         self.num_joints = p.getNumJoints(self.inmoov_id)
         self.get_joint_info()
-
-        # tmp1 = p.getNumBodies(self.inmoov_id)  # Equal to 1, only one body
-        # tmp2 = p.getNumConstraints(self.inmoov_id)  # Equal to 0, no constraint?
-        # tmp3 = p.getBodyUniqueId(self.inmoov_id)  # res = 0, do not understand
         for jointIndex in self.joints_key:
             p.resetJointState(self.inmoov_id, jointIndex, 0.)
         # get the effector world position
         self.effector_pos = p.getLinkState(self.inmoov_id, self.effectorId)[0]
+
         # # get link information
         # ######################## debug part #######################
+        # # this debug part will plot a 3D representation of the inmoov annotated links
         # from mpl_toolkits.mplot3d import Axes3D
         # #To plot the link index by graphical representation
         # link_position = []
@@ -119,10 +129,6 @@ class Inmoov:
         else:
             return len(self.joints_key)
 
-    # def __del__(self):
-    #     if CONNECTED_TO_SIMULATOR:
-    #         p.disconnect()
-
     def step(self, action):
         raise NotImplementedError
 
@@ -132,70 +138,64 @@ class Inmoov:
     def _reward(self):
         raise NotImplementedError
 
-    def get_action_dimension(self):
-        """
-        To know how many joint can be controlled
-        :return: int
-        """
-        return len(self.joints_key)
-
+    @staticmethod
     def get_effector_dimension(self):
         """
+        The DOF for the effector
         :return: three dimension for x, y and z
         """
         return 3
 
     def apply_action_joints(self, motor_commands):
         """
-        Apply the action to the inmoov robot joint
-        If the length of commands is inferior to the length of controlable joint, then we only control the first joints
-        :param motor_commands:
+        Apply the action to the inmoov robot 53 joints that can be moved, so please provide an array with 53 values
+        :param motor_commands: the motor command for the joints of robot, a direct control way
         """
         assert len(motor_commands) == len(self.joints_key), "Error, please provide control commands for all joints"
         num_control = len(motor_commands)
         target_velocities = [0] * num_control
         position_gains = [0.3] * num_control
         velocity_gains = [1] * num_control
+        joint_targets = np.clip(a=motor_commands, a_min=self.joint_lower_limits, a_max=self.joint_upper_limits)
         p.setJointMotorControlArray(bodyUniqueId=self.inmoov_id,
                                     controlMode=p.POSITION_CONTROL,
                                     jointIndices=self.joints_key,
-                                    targetPositions=motor_commands,
+                                    targetPositions=joint_targets,
                                     targetVelocities=target_velocities,
                                     forces=self.jointMaxForce,
                                     positionGains=position_gains,
                                     velocityGains=velocity_gains
                                     )
-        # # Same functionality, but upper lines works better
+        # # Same functionality, but upper lines works faster
         # for i in range(num_control):
         #     # p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
         #     #                         controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
-        #     #                         targetVelocity=0, force=self.max_force,
+        #     #                         targetVelocity=0, force=self.jointMaxForce[i],
         #     #                         maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
         #     p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
         #                             controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],
-        #                             targetVelocity=0, force=self.max_force,
+        #                             targetVelocity=0, force=self.jointMaxForce[i],
         #                             maxVelocity=4., positionGain=0.3, velocityGain=1)
         # p.stepSimulation()
 
     def apply_action_pos(self, motor_commands):
         """
-        Apply the action to the inmoov robot joint
-        If the length of commands is inferior to the length of controlable joint, then we only control the first joints
+        Apply the action to the inmoov robot joint.
+        This is a continual version of control, it can move along x, y, z axis
         :param motor_commands: [dx, dy, dz]
         """
         # TODO: Add orientation control information for a better physical representation
         # assert len(motor_commands) == (3+4) x,y,z + Quaternion
         assert len(motor_commands) == 3, "Invalid input commands, please use a 3D: x,y,z information"
         dx, dy, dz = motor_commands
-        # We observe that the control has error, and the best way to get the current
-        # position is to getLinkState instead of save the initial position and do the incremental thing
+        # I found that the control has error, that means that the the robot may not effect the exact [dx, dy, dz]
+        # movement. and the best way to get the current position is to getLinkState
+        # instead of running a self.variable += [dx, dy, dz]
         joint_position = p.getLinkState(self.inmoov_id, self.effectorId)
         current_state = joint_position[0]
-        # printGreen("Current hand position: {}".format(joint_position[0]))
-        # printYellow("Current position by accumulate error")
-        # printRed("Error: {}".format(np.linalg.norm(np.array(current_state) - np.array(self.effector_pos))))
         self.effector_pos = current_state
-        # TODO: it might be better to constraint the target position in a constraint box?
+        # TODO: it might be better to constraint the effector position in a constraint box? (the effector can not move
+        #  anywhere we want anyway..)
         target_pos = (current_state[0] + dx, current_state[1] + dy, current_state[2] + dz)
         # Compute the inverse kinematics for every revolute joint
         num_control_joints = len(self.joints_key)
@@ -206,7 +206,8 @@ class Inmoov:
         # the velocity at the target position
         target_velocity = [0] * num_control_joints
         if self.use_null_space:
-            # TODO: Add orientation control
+            # TODO: Add orientation control (The current version support only the positional control)
+            # Solve the Inverse Kinematics for joints to arrive at the target position for effector link
             joint_poses = p.calculateInverseKinematics(self.inmoov_id, self.effectorId, target_pos,
                                                        lowerLimits=self.joint_lower_limits,
                                                        upperLimits=self.joint_upper_limits,
@@ -215,34 +216,40 @@ class Inmoov:
                                                        )
         else:  # use regular KI solution
             joint_poses = p.calculateInverseKinematics(self.inmoov_id, self.effectorId, target_pos)
-        # printGreen(joint_poses)
         p.setJointMotorControlArray(self.inmoov_id, self.joints_key,
                                     controlMode=p.POSITION_CONTROL,
                                     targetPositions=joint_poses,
                                     targetVelocities=target_velocity,
                                     #  maxVelocities=self.jointMaxVelocity,
                                     forces=self.jointMaxForce)
+        # Run the simulation step
         p.stepSimulation()
+        # # I left these lines below, since the setJointMotorControlArray do not support "maxVelocity", yet I don't know
+        # # the effect.
         # for i, index in enumerate(self.joints_key):
         #     joint_info = self.joint_name[index]
         #     jointMaxForce, jointMaxVelocity = joint_info[2:4]
         #
         #     p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=index, controlMode=p.POSITION_CONTROL,
-        #                             targetPosition=joint_poses[i], targetVelocity=0, force=self.max_force,
+        #                             targetPosition=joint_poses[i], targetVelocity=0, force=self.jointMaxForce[i],
         #                             maxVelocity=self.max_velocity, positionGain=0.3, velocityGain=1)
 
-
+    def apply_action(self, motor_commands):
+        if self.positional_control:
+            self.apply_action_pos(motor_commands)
+        else:
+            self.apply_action_joints(motor_commands)
 
     def get_joint_info(self):
         """
+        This method is to register the joint information into the class, more information for method "p.getJointInfo"
+        to be found in the pybullet quickStart
         From this we can see the fact that:
         - no joint damping is set
         - some of the joints are reserved???
         - none of them has joint Friction
-        - we have 53 revo
-        :return:
+        - we have 53 revolte joints (that can be moved)
         """
-
         self.joints_key = []
         self.joint_lower_limits, self.joint_upper_limits, self.jointMaxForce, self.jointMaxVelocity = [], [], [], []
         for i in range(self.num_joints):
@@ -255,10 +262,10 @@ class Inmoov:
                 # jointName, (jointLowerLimit, jointUpperLimit), jointMaxForce, jointMaxVelocity, linkName, parentIndex
                 # (info[1], (info[8], info[9]), info[10], info[11], info[12], info[16])
                 self.joint_name[i] = info[1]
-                if info[1] == b'right_bicep':
-                    printYellow(info)
-                if info[1] == b'left_bicep':
-                    printGreen(info)
+                # if info[1] == b'right_bicep':
+                #     printYellow(info)
+                # if info[1] == b'left_bicep':
+                #     printGreen(info)
                 self.joint_lower_limits.append(info[8])
                 self.joint_upper_limits.append(info[9])
                 self.jointMaxForce.append(info[10])
@@ -266,56 +273,27 @@ class Inmoov:
                 self.joints_key.append(i)
 
     def debugger_step(self):
-        if self.debug_mode:
-            current_joints = []
-            # The order is as the same as the self.joint_key
-            for j in self.debug_joints:
-                tmp_joint_control = p.readUserDebugParameter(j)
-                current_joints.append(tmp_joint_control)
-            for joint_state, joint_key in zip(current_joints, self.joints_key):
-                p.resetJointState(self.inmoov_id, joint_key, targetValue=joint_state)
-            p.stepSimulation()
-
-    def debugger_camera(self):
-        if self.debug_mode:
-            tete = "Stupid"
-
-    def robot_render(self):
         """
-        The image from the robot eye
+        控制 debug slider来控制机器人
+        if you run self.debugger_step, the sliders on the GUI will be activated and keep catching info from sliders,
+        and control the joints as you indicated
         :return:
         """
-        # TODO
+        assert self.debug_mode, "Error: the debugger_step is only allowed in debug mode"
 
-    def render(self, num_camera=1):
+        current_joints = []
+        # The order is as the same as the self.joint_key
+        for j in self.debug_joints:
+            tmp_joint_control = p.readUserDebugParameter(j)
+            current_joints.append(tmp_joint_control)
+        for joint_state, joint_key in zip(current_joints, self.joints_key):
+            p.resetJointState(self.inmoov_id, joint_key, targetValue=joint_state)
+        p.stepSimulation()
+
+        # These lines will let the camera information project on the GUI, so set self._renders True to see it
         if self._renders:
-            plt.ion()
-            if num_camera == 1:
-                figsize = np.array([3, 1]) * 5
-            else:
-                figsize = np.array([3, 2]) * 5
-            fig = plt.figure("Inmoov", figsize=figsize)
-
-            camera_target_position = self.camera_target_pos
-
-            # view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
-            #     cameraTargetPosition=(0.316, 0.316, 1.0),
-            #     distance=1.2,
-            #     yaw=90,  # 145 degree
-            #     pitch=-13,  # -36 degree
-            #     roll=0,
-            #     upAxisIndex=2
-            # )
-            # proj_matrix2 = p.computeProjectionMatrixFOV(
-            #     fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-            #     nearVal=0.1, farVal=100.0)
-            # (_, _, px2, depth2, mask2) = p.getCameraImage(
-            #     width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix2,
-            #     projectionMatrix=proj_matrix2, renderer=p.ER_TINY_RENDERER)
-
-            # first camera
             view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
-                cameraTargetPosition=camera_target_position,
+                cameraTargetPosition=self.camera_target_pos,
                 distance=2.,
                 yaw=145,  # 145 degree
                 pitch=-36,  # -36 degree
@@ -329,8 +307,50 @@ class Inmoov:
             (_, _, px, depth, mask) = p.getCameraImage(
                 width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
                 projectionMatrix=proj_matrix1, renderer=p.ER_TINY_RENDERER)
-            px, depth, mask = np.array(px), np.array(depth), np.array(mask)
-            # if there are more than one camera, (only two are allowed actually)
+
+    def debugger_camera(self):
+        if self.debug_mode:
+            TeTe = "Stupid"
+            print(TeTe)
+
+    def robot_render(self):
+        """
+        The image from the robot eye
+        :return:
+        """
+        # TODO
+
+    def render(self, num_camera=1):
+        """
+        This function will not actually be used, but can inspire you to create camera in the simulation
+        :param num_camera:
+        :return:
+        """
+        view_matrix1 = p.computeViewMatrixFromYawPitchRoll(
+            cameraTargetPosition=self.camera_target_pos,
+            distance=2.,
+            yaw=145,  # 145 degree
+            pitch=-36,  # -36 degree
+            roll=0,
+            upAxisIndex=2
+        )
+        proj_matrix1 = p.computeProjectionMatrixFOV(
+            fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+            nearVal=0.1, farVal=100.0)
+        # depth: the depth camera, mask: mask on different body ID
+        (_, _, px, depth, mask) = p.getCameraImage(
+            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix1,
+            projectionMatrix=proj_matrix1, renderer=p.ER_TINY_RENDERER)
+        px, depth, mask = np.array(px), np.array(depth), np.array(mask)
+
+        if self._renders:
+            plt.ion()
+            if num_camera == 1:
+                figsize = np.array([3, 1]) * 5
+            else:
+                figsize = np.array([3, 2]) * 5
+            fig = plt.figure("Inmoov", figsize=figsize)
+
             if num_camera == 2:
                 view_matrix2 = p.computeViewMatrixFromYawPitchRoll(
                     cameraTargetPosition=(0.316, 0.316, 1.0),
@@ -364,7 +384,7 @@ class Inmoov:
                 ax3 = fig.add_subplot(236)
                 ax3.imshow(mask2)
                 ax3.set_title("mask_2")
-            else:  # only one camera
+            elif num_camera == 1:  # only one camera
                 ax1 = fig.add_subplot(131)
                 ax1.imshow(px)
                 ax1.set_title("rgb_1")
@@ -382,3 +402,4 @@ class Inmoov:
             plt.draw()
             # To avoid too fast drawing conflict
             plt.pause(0.00001)
+
