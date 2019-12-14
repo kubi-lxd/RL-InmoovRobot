@@ -18,8 +18,8 @@ MAX_STEPS = 1000  # WARNING: should be also change in __init__.py (timestep_limi
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
 N_STEPS_OUTSIDE_SAFETY_SPHERE = 5000
-RENDER_HEIGHT = 256
-RENDER_WIDTH = 256
+RENDER_HEIGHT = 512
+RENDER_WIDTH = 512
 Z_TABLE = -0.2
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
@@ -75,21 +75,27 @@ class InmoovButtonGymEnv(SRLGymEnv):
                                                env_rank=env_rank,
                                                srl_pipe=srl_pipe)
         self._timestep = 1. / 240.
+        # URDF PATH
         self._urdf_root = urdf_root
+        self._urdf_sjtu = "../../urdf_robot/"
+
         self._action_repeat = action_repeat
         self._observation = []
         self._env_step_counter = 0
         self._renders = renders
         self._width = RENDER_WIDTH
         self._height = RENDER_HEIGHT
+
         self._cam_dist = 1.1
         self._cam_yaw = 145
         self._cam_pitch = -36
         self._cam_roll = 0
+
         self._max_distance = max_distance
         self._shape_reward = shape_reward
         self._random_target = random_target
         self._force_down = force_down
+
         self.camera_target_pos = (0.316, -0.2, -0.1)
         self._is_discrete = is_discrete
         self.terminated = False
@@ -109,6 +115,7 @@ class InmoovButtonGymEnv(SRLGymEnv):
         self.button_pos = None
         self.button_uid = None
         self._kuka = None
+        self._inmoov = None
         self.action = None
         self.srl_model = srl_model
 
@@ -155,18 +162,29 @@ class InmoovButtonGymEnv(SRLGymEnv):
 
         if self.srl_model == "ground_truth":
             self.state_dim = self.getGroundTruthDim()
-        elif self.srl_model == "joints":
-            self.state_dim = self.getJointsDim()
-        elif self.srl_model == "joints_position":
-            self.state_dim = self.getGroundTruthDim() + self.getJointsDim()
+        #elif self.srl_model == "joints":
+        #    self.state_dim = self.getJointsDim()
+        #elif self.srl_model == "joints_position":
+        #    self.state_dim = self.getGroundTruthDim() + self.getJointsDim()
 
-        if self.srl_model == "raw_pixels":
-            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-        else:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+        #if self.srl_model == "raw_pixels":
+        #    self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        #else:
+        #    self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getSRLState(self, observation):
         state = []
+        if self.srl_model in ["ground_truth"]:
+            if self.relative_pos:
+                state += list(self.getGroundTruth() - self.getTargetPos())
+            else:
+                state += list(self.getGroundTruth())
+        if len(state) != 0:
+            return np.array(state)
+        else:
+            self.srl_pipe[0].put((self.env_rank, observation))
+            return self.srl_pipe[1][self.env_rank].get()
+        '''
         if self.srl_model in ["ground_truth", "joints_position"]:
             if self.relative_pos:
                 state += list(self.getGroundTruth() - self.getTargetPos())
@@ -179,7 +197,7 @@ class InmoovButtonGymEnv(SRLGymEnv):
             return np.array(state)
         else:
             self.srl_pipe[0].put((self.env_rank, observation))
-            return self.srl_pipe[1][self.env_rank].get()
+            return self.srl_pipe[1][self.env_rank].get()'''
 
     def getTargetPos(self):
         return self.button_pos
@@ -189,7 +207,7 @@ class InmoovButtonGymEnv(SRLGymEnv):
         """
         :return: (int)
         """
-        return 14
+        return 6
 
     @staticmethod
     def getGroundTruthDim():
@@ -200,9 +218,9 @@ class InmoovButtonGymEnv(SRLGymEnv):
 
     def getArmPos(self):
         """
-        :return: ([float]) Position (x, y, z) of kuka gripper
+        :return: ([float]) Position (x, y, z) of inmoov hand
         """
-        return p.getLinkState(self._kuka.kuka_uid, self._kuka.kuka_gripper_index)[0]
+        return p.getLinkState(self._inmoov.inmoov_id, self._inmoov.effectorId)[0]
 
     def reset(self):
         self.terminated = False
@@ -227,16 +245,14 @@ class InmoovButtonGymEnv(SRLGymEnv):
         self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
 
         p.setGravity(0, 0, -10)
-        self._kuka = kuka.Kuka(urdf_root_path=self._urdf_root, timestep=self._timestep,
-                               use_inverse_kinematics=(not self.action_joints),
-                               small_constraints=(not self._random_target))
+        self._inmoov = inmoov.Inmoov(urdf_path = self._urdf_sjtu)
         self._env_step_counter = 0
         # Close the gripper and wait for the arm to be in rest position
         for _ in range(500):
             if self.action_joints:
-                self._kuka.applyAction(list(np.array(self._kuka.joint_positions)[:7]) + [0, 0])
+                self._inmoov.applyAction(list(np.array(self._inmoov.joint_positions)[:7]) + [0, 0])
             else:
-                self._kuka.applyAction([0, 0, 0, 0, 0])
+                self._inmoov.applyAction([0, 0, 0, 0, 0])
             p.stepSimulation()
 
         # Randomize init arm pos: take 5 random actions

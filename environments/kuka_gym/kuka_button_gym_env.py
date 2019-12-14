@@ -167,10 +167,10 @@ class KukaButtonGymEnv(SRLGymEnv):
         elif self.srl_model == "joints_position":
             self.state_dim = self.getGroundTruthDim() + self.getJointsDim()
 
-        if self.srl_model == "raw_pixels":
-            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-        else:
-            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+        #if self.srl_model == "raw_pixels":
+        #    self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        #else:
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getSRLState(self, observation):
         state = []
