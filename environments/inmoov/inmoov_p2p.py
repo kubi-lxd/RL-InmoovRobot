@@ -91,7 +91,7 @@ class InmoovGymEnv(SRLGymEnv):
         self.terminated = False
         self.n_contacts = 0
         if not self._first_reset_flag:
-            print('first reset,loading urdf...')
+            # print('first reset,loading urdf...')
             p.resetSimulation()
             self._first_reset_flag = True
             p.setPhysicsEngineParameter(numSolverIterations=150)
