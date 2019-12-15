@@ -76,7 +76,7 @@ class Inmoov:
         """
         Reset the environment
         """
-        self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
+        self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_colmass.urdf'), self.robot_base_pos)
         self.num_joints = p.getNumJoints(self.inmoov_id)
         self.get_joint_info()
         for jointIndex in self.joints_key:

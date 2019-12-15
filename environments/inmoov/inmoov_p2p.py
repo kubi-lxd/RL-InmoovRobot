@@ -166,7 +166,7 @@ class InmoovGymEnv(SRLGymEnv):
         #     self.guided_step()
         if action is None:
             action = np.array([0, 0, 0])
-        dv = 0.05
+        dv = 1.2
         dx = [-dv, dv, 0, 0, 0, 0][action]
         dy = [0, 0, -dv, dv, 0, 0][action]
         dz = [0, 0, 0, 0, -dv, dv][action]
