@@ -72,6 +72,14 @@ class Inmoov:
 
         self.reset()
 
+    def reset_joints(self):
+        """
+        Reset robot joints to initial position for faster resetting
+        """
+        for jointIndex in self.joints_key:
+            p.resetJointState(self.inmoov_id, jointIndex, 0.)
+        self.effector_pos = p.getLinkState(self.inmoov_id, self.effectorId)[0]
+
     def reset(self):
         """
         Reset the environment
