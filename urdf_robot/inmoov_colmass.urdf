@@ -888,7 +888,7 @@
   </joint>
   <joint name="right_bicep" type="revolute">
     <axis xyz="-1 0 0"/>
-    <limit effort="1000.0" lower="-3.1415926" upper="0.0" velocity="0.5"/>
+    <limit effort="1000.0" lower="-1.5707963" upper="0.0" velocity="0.5"/>
     <origin rpy="0 0 0" xyz="0 -0.0278 -0.2235"/>
     <parent link="right_bicep"/>
     <child link="right_forearm"/>
@@ -1844,7 +1844,7 @@
   </joint>
   <joint name="left_bicep" type="revolute">
     <axis xyz="-1 0 0"/>
-    <limit effort="1000.0" lower="0.0" upper="-3.1415926" velocity="0.5"/>
+    <limit effort="1000.0" lower="0.0" upper="-1.5707963" velocity="0.5"/>
     <origin rpy="0 0 0" xyz="0 -0.0278 -0.2235"/>
     <parent link="left_bicep"/>
     <child link="left_forearm"/>
