@@ -74,11 +74,19 @@ class Inmoov:
                 p.connect(p.DIRECT)
         self.reset()
 
+    def reset_joints(self):
+        """
+        Reset robot joints to initial position for faster resetting
+        """
+        for jointIndex in self.joints_key:
+            p.resetJointState(self.inmoov_id, jointIndex, 0.)
+        self.effector_pos = p.getLinkState(self.inmoov_id, self.effectorId)[0]
+
     def reset(self):
         """
         Reset the environment
         """
-        self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_col.urdf'), self.robot_base_pos)
+        self.inmoov_id = p.loadURDF(os.path.join(self.urdf_path, 'inmoov_colmass.urdf'), self.robot_base_pos)
         self.num_joints = p.getNumJoints(self.inmoov_id)
         self.get_joint_info()
         for jointIndex in self.joints_key:

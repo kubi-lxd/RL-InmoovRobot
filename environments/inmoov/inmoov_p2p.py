@@ -27,7 +27,7 @@ class InmoovGymEnv(SRLGymEnv):
                  env_rank=0,
                  srl_pipe=None,
                  action_repeat=1, srl_model="ground_truth",
-                 seed=0, debug_mode=True, **kwargs):
+                 seed=0, debug_mode=False, **kwargs):
         """
 
         :param urdf_path:
@@ -68,6 +68,7 @@ class InmoovGymEnv(SRLGymEnv):
         self.terminated = False
         self.n_contacts = 0
         self.state_dim = self.getGroundTruthDim()
+        self._first_reset_flag = False
 
         if debug_mode:
             client_id = p.connect(p.SHARED_MEMORY)
@@ -89,16 +90,20 @@ class InmoovGymEnv(SRLGymEnv):
         self._step_counter = 0
         self.terminated = False
         self.n_contacts = 0
-        p.resetSimulation()
-        p.setPhysicsEngineParameter(numSolverIterations=150)
-        p.loadURDF(os.path.join(pybullet_data.getDataPath(), "plane.urdf"), [0, 0, 0])
-        p.setGravity(0, 0, GRAVITY)
+        if not self._first_reset_flag:
+            # print('first reset,loading urdf...')
+            p.resetSimulation()
+            self._first_reset_flag = True
+            p.setPhysicsEngineParameter(numSolverIterations=150)
+            p.loadURDF(os.path.join(pybullet_data.getDataPath(), "plane.urdf"), [0, 0, 0])
+            p.setGravity(0, 0, GRAVITY)
 
-        self._inmoov = inmoov.Inmoov(urdf_path=self.urdf_path, positional_control=True)
-        self._inmoov_id = self._inmoov.inmoov_id
+            self._inmoov = inmoov.Inmoov(urdf_path=self.urdf_path, positional_control=True)
+            self._inmoov_id = self._inmoov.inmoov_id
 
-        self._tomato_id = p.loadURDF(os.path.join(self.urdf_path, "tomato_plant.urdf"), [0.4, 0.4, 0.5])
-
+            self._tomato_id = p.loadURDF(os.path.join(self.urdf_path, "tomato_plant.urdf"), [0.4, 0.4, 0.5])
+        print('fast reset,resetting robot joints')
+        self._inmoov.reset_joints()
         # p.resetSimulation()
         # p.setPhysicsEngineParameter(numSolverIterations=150)
         # p.setGravity(0., 0., GRAVITY)
@@ -166,7 +171,7 @@ class InmoovGymEnv(SRLGymEnv):
         #     self.guided_step()
         if action is None:
             action = np.array([0, 0, 0])
-        dv = 0.05
+        dv = 1.2
         dx = [-dv, dv, 0, 0, 0, 0][action]
         dy = [0, 0, -dv, dv, 0, 0][action]
         dz = [0, 0, 0, 0, -dv, dv][action]

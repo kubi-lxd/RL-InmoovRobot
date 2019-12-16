@@ -36,5 +36,5 @@ def test_inmoov_gym():
         # robot.step()
 
 if __name__ == '__main__':
-    # test_inmoov_gym()
-    test_inmoov()
+    test_inmoov_gym()
+    # test_inmoov()
