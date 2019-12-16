@@ -1,10 +1,11 @@
 import re
 import os
 from ipdb import set_trace as tt
+import re
 
-urdf_path = "/home/tete/work/SJTU/kuka_play/robotics-rl-srl/urdf_robot/"
-file_path = os.path.join(urdf_path, "inmoov.urdf")
-new_file = os.path.join(urdf_path, "inmoov_col.urdf")
+urdf_path = "/home/tete/work/SJTU/RL-InmoovRobot/urdf_robot/jaka_urdf/"
+file_path = os.path.join(urdf_path, "jaka.urdf")
+new_file = os.path.join(urdf_path, "jaka_local.urdf")
 
 def read_file(path):
     """
@@ -103,6 +104,17 @@ def add_collision(content, block_index, filename, origin):
             num_block += 1
     return new_content
 
+def replace_file_name_to_relative(data):
+    local_data = []
+    for line in data:
+        if "filename" in line:
+            new_line = line.split("package://jaka_ur_description_pkg/")
+            print("".join(new_line))
+            local_data.append("".join(new_line))
+        else:
+            local_data.append(line)
+    return local_data
+
 def save_list_to_file(file_name, data):
     if os.path.exists(file_name):
         os.remove(file_name)
@@ -115,7 +127,8 @@ def save_list_to_file(file_name, data):
 
 if __name__ == "__main__":
     message = read_file(file_path)
-    blocks, mesh_file, cord_origin = block_finder_by_filename(message, "link")
-    new_message = add_collision(message, blocks, mesh_file, cord_origin)
-    save_list_to_file(new_file, new_message)
+    new_message_jaka = replace_file_name_to_relative(message)
+    # blocks, mesh_file, cord_origin = block_finder_by_filename(message, "link")
+    # new_message = add_collision(message, blocks, mesh_file, cord_origin)
+    save_list_to_file(new_file, new_message_jaka)
 

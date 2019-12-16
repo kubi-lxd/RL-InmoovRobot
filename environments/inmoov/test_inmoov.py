@@ -9,7 +9,7 @@ from environments.inmoov.inmoov import Inmoov
 from environments.inmoov.inmoov_p2p import InmoovGymEnv
 
 def test_inmoov():
-    robot = Inmoov(debug_mode=True )
+    robot = Inmoov(debug_mode=True)
     _urdf_path = pybullet_data.getDataPath()
     planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
     # 这是个足球场的环境， 注释掉上面一行，运行下一行可见

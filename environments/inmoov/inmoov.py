@@ -5,7 +5,6 @@ import pybullet as p
 
 from environments.inmoov.joints_registry import joint_registry
 # debugger
-from ipdb import set_trace as tt
 # colorful print
 from util.color_print import printGreen, printBlue, printRed, printYellow
 
@@ -86,7 +85,7 @@ class Inmoov:
             p.resetJointState(self.inmoov_id, jointIndex, 0.)
         # get the effector world position
         self.effector_pos = p.getLinkState(self.inmoov_id, self.effectorId)[0]
-        plt.ion()
+        # plt.ion()
         # # get link information
         # ######################## debug part #######################
         # # this debug part will plot a 3D representation of the inmoov annotated links
