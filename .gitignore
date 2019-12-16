@@ -7,6 +7,8 @@ data/
 trained_models/
 pybullet_data/
 urdf_robot/
+*jaka/
+jaka/
 !/urdf_robot/urdf_note.md
 urdf/
 logs/
