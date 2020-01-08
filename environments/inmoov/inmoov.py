@@ -176,7 +176,7 @@ class Inmoov:
                                     positionGains=position_gains,
                                     velocityGains=velocity_gains
                                     )
-        # # Same functionality, but upper lines works faster
+        # # Same functionality, but upper lines work faster
         # for i in range(num_control):
         #     # p.setJointMotorControl2(bodyUniqueId=self.inmoov_id, jointIndex=CONTROL_JOINT[i],
         #     #                         controlMode=p.POSITION_CONTROL, targetPosition=joint_poses[i],

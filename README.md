@@ -11,6 +11,7 @@ sh run_train.sh
 ```
 sh run_trainresult.sh
 ```
+
 - 修正部分冲突后合并,可能目前master pull下来会带冲突,修改的部分:
 1. inmoov.py内的urdf被修改为了inmoov_colmass.urdf 这是一个删除了mass和修改了bicep运动范围的文件,为了避免出错保留了原urdf文件
 2. inmoov.py添加了reset_joints方法

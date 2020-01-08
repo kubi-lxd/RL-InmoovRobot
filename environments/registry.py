@@ -71,6 +71,6 @@ for name, (env_class, _, _, _) in registered_env.items():
     register(
         _id=name,
         entry_point=env_class.__module__ + ":" + env_class.__name__,
-        timestep_limit=None,  # This limit is changed in the file
+        max_episode_steps=None,  # This limit is changed in the file
         reward_threshold=None  # Threshold at which the environment is considered as solved
     )

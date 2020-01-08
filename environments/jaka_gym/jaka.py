@@ -9,6 +9,7 @@ from util.color_print import printGreen, printBlue, printRed, printYellow
 
 URDF_PATH = "/urdf_robot/jaka_urdf/jaka_local.urdf"
 GRAVITY = -9.8
+RENDER_WIDTH, RENDER_HEIGHT = 224, 224
 
 class Jaka:
     def __init__(self, urdf_path, debug_mode=False):
@@ -17,10 +18,12 @@ class Jaka:
         self.jaka_id = -1
         self.num_joints = -1
         self.robot_base_pos = [0, 0, 0]
-        self.joint_lower_limits, self.joint_upper_limits, self.jointMaxForce, self.jointMaxVelocity = None, None, None, None
+        self.joint_lower_limits, self.joint_upper_limits, self.jointMaxForce, self.jointMaxVelocity = \
+            [], [], [], []
         self.joint_name = {}
         self.debug_joints = []
         self.joints_key = []
+        self.effector_id = 5
         if self.debug_mode:
             client_id = p.connect(p.SHARED_MEMORY)
             if client_id < 0:
@@ -41,10 +44,9 @@ class Jaka:
         self.get_joint_info()
         for jointIndex in self.joints_key:
             p.resetJointState(self.jaka_id, jointIndex, 0.)
+        self.render()
 
     def get_joint_info(self):
-        self.joints_key = []
-        self.joint_lower_limits, self.joint_upper_limits, self.jointMaxForce, self.jointMaxVelocity = [], [], [], []
         for i in range(self.num_joints):
             info = p.getJointInfo(self.jaka_id, i)
             if info[2] == p.JOINT_REVOLUTE:
@@ -58,12 +60,35 @@ class Jaka:
             keys = list(self.joint_name.keys())
             keys.sort()
             for i, key in enumerate(keys):
-                self.debug_joints.append(p.addUserDebugParameter(self.joint_name[key].decode(), self.joint_lower_limits[i],
+                self.debug_joints.append(p.addUserDebugParameter(self.joint_name[key].decode(),
+                                                                 self.joint_lower_limits[i],
                                                                  self.joint_upper_limits[i], 0.))
+
+    def control_by_xyz(self):
+        effector_id = self.effector_id
+
+    def render(self):
+        camera_matrix = p.computeViewMatrixFromYawPitchRoll(
+            cameraTargetPosition=self.robot_base_pos,
+            distance=2.,
+            yaw=145,  # 145 degree
+            pitch=-36,  # -36 degree
+            roll=0,
+            upAxisIndex=2
+        )
+        proj_matrix1 = p.computeProjectionMatrixFOV(
+            fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+            nearVal=0.1, farVal=100.0)
+        # depth: the depth camera, mask: mask on different body ID
+        (_, _, px, depth, mask) = p.getCameraImage(
+            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=camera_matrix,
+            projectionMatrix=proj_matrix1, renderer=p.ER_TINY_RENDERER)
+        tt()
+        px, depth, mask = np.array(px), np.array(depth), np.array(mask)
+        tt()
 
     def debugger_step(self):
         assert self.debug_mode, "Error: the debugger_step is only allowed in debug mode"
-
         current_joints = []
         for j in self.debug_joints:
             tmp_joint_control = p.readUserDebugParameter(j)
@@ -72,9 +97,11 @@ class Jaka:
             p.resetJointState(self.jaka_id, joint_key, targetValue=joint_state)
         p.stepSimulation()
 
+
+
 if __name__ == '__main__':
-    jaka = Jaka(URDF_PATH, True)
+    jaka = Jaka(URDF_PATH, debug_mode=False)
     _urdf_path = pybullet_data.getDataPath()
-    planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
-    while True:
-        jaka.debugger_step()
+    # planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
+    # while True:
+    #     jaka.debugger_step()

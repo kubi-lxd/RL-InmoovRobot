@@ -92,7 +92,7 @@ def _make(id_, env_kwargs=None):
     # Keeping the old patching system for _reset, _step and timestep limit
     if hasattr(env, "_reset") and hasattr(env, "_step") and not getattr(env, "_gym_disable_underscore_compat", False):
         patch_deprecated_methods(env)
-    if (env.spec.timestep_limit is not None) and not spec.tags.get('vnc'):
+    if (env.spec.max_episode_steps is not None) and not spec.tags.get('vnc'):
         from gym.wrappers.time_limit import TimeLimit
         env = TimeLimit(env,
                         max_episode_steps=env.spec.max_episode_steps,
