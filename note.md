@@ -164,3 +164,19 @@ mb_loss_vals通过_train_step得到
 
 有专属的policy数据流（待补充）
 
+### 模型再训练
+
+**例子**
+首先我们训练一个模型，他将会记录在目录`logs/test_finetune/**EnvName**` 之中
+
+```python -m rl_baselines.train --env InmoovGymEnv-v0  --srl-model ground_truth  --log-dir logs/test_finetune/```
+
+如果我们希望对这个模型重新训练，那么可以使用以下语句
+
+```python -m rl_baselines.train --env InmoovGymEnv-v0  --srl-model ground_truth  --log-dir logs/test_finetune/ --load-rl-model-path logs/test_finetune/**EnvName**/ground_truth/ppo2/**logtime**/ppo2.pkl```
+
+需要注意的是，一定要使用`ppo2.pkl`，而不是`ppo2_model.pkl`， model文件里面事实上只是存了他的几个超参数，前者才是真正的模型，当你到文件目录下看的时候也可以通过文件大小判断
+
+另外需要注意的是，再训练的learning rate会默认调到原来的百分之一，事实上的RL训练一般默认线性的lr decay，如果不记得当初训练断点在哪里，直接重新接上去训练效果肯定会与未发生间断训练的结果有些许出入
+当然也可以通过参数`--new-lr`来修改，但是目前的版本我不能保证正确性，如果有必要后期会进行进一步维护
+

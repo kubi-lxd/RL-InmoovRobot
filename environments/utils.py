@@ -14,7 +14,7 @@ def dynamicEnvLoad(env_id):
     :return: (module, str, str) module_env, class_name, env_module_path
     """
     # Get from the env_id, the entry_point, and distinguish if it is a callable, or a string
-    entry_point = registry.spec(env_id).entry_point
+    entry_point = registry.spec(env_id)._entry_point
     if callable(entry_point):
         class_name = entry_point.__name__
         env_module_path = entry_point.__module__
@@ -76,13 +76,13 @@ def _make(id_, env_kwargs=None):
     spec = registry.spec(id_)
 
     # Keeping the checks and safe guards of the old code
-    assert spec.entry_point is not None, 'Attempting to make deprecated env {}. ' \
+    assert spec._entry_point is not None, 'Attempting to make deprecated env {}. ' \
                                           '(HINT: is there a newer registered version of this env?)'.format(spec.id_)
 
-    if callable(spec.entry_point):
-        env = spec.entry_point(**env_kwargs)
+    if callable(spec._entry_point):
+        env = spec._entry_point(**env_kwargs)
     else:
-        cls = load(spec.entry_point)
+        cls = load(spec._entry_point)
         # create the env, with the original kwargs, and the new ones overriding them if needed
         env = cls(**{**spec._kwargs, **env_kwargs})
 
