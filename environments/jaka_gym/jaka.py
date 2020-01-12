@@ -3,6 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import pybullet as p
 import pybullet_data
+import cv2
 
 from ipdb import set_trace as tt
 from util.color_print import printGreen, printBlue, printRed, printYellow
@@ -11,10 +12,13 @@ URDF_PATH = "/urdf_robot/jaka_urdf/jaka_local.urdf"
 GRAVITY = -9.8
 RENDER_WIDTH, RENDER_HEIGHT = 224, 224
 
+
 class Jaka:
-    def __init__(self, urdf_path, debug_mode=False):
+    def __init__(self, urdf_path, debug_mode=False, use_null_space=True, positional_control=True):
         self.urdf_path = urdf_path
         self.debug_mode = debug_mode
+        self.positioinal_control = positional_control
+
         self.jaka_id = -1
         self.num_joints = -1
         self.robot_base_pos = [0, 0, 0]
@@ -24,6 +28,10 @@ class Jaka:
         self.debug_joints = []
         self.joints_key = []
         self.effector_id = 5
+        self.initial_joints_state = [0, 0, 1, 1, 1, 1]
+        self.effector_pos = None
+
+        self.use_null_space = use_null_space
         if self.debug_mode:
             client_id = p.connect(p.SHARED_MEMORY)
             if client_id < 0:
@@ -43,18 +51,32 @@ class Jaka:
         self.num_joints = p.getNumJoints(self.jaka_id)
         self.get_joint_info()
         for jointIndex in self.joints_key:
-            p.resetJointState(self.jaka_id, jointIndex, 0.)
-        self.render()
+            p.resetJointState(self.jaka_id, jointIndex, self.initial_joints_state[jointIndex])
+        p.stepSimulation()
+
+    def apply_action(self, action):
+        if self.positioinal_control:
+            self.apply_action_pos(action)
+        else:
+            self.apply_action_joints(action)
+
+    def render(self, mode='channel_last'):
+        return self._render(mode=mode)
+
+    ##############################################################
+    # 我是分割线，下面的函数基本上不太用动了 ############################
+    ##############################################################
 
     def get_joint_info(self):
-        for i in range(self.num_joints):
-            info = p.getJointInfo(self.jaka_id, i)
-            if info[2] == p.JOINT_REVOLUTE:
-                self.joint_name[i] = info[1]
-                self.joint_lower_limits.append(info[8])
-                self.joint_upper_limits.append(info[9])
-                self.jointMaxForce.append(info[10])
-                self.jointMaxVelocity.append(info[11])
+        num_joints = self.num_joints
+        for i in range(num_joints):
+            infos = p.getJointInfo(self.jaka_id, i)
+            if infos[2] == p.JOINT_REVOLUTE:
+                self.joint_name[i] = infos[1]
+                self.joint_lower_limits.append(infos[8])
+                self.joint_upper_limits.append(infos[9])
+                self.jointMaxForce.append(infos[10])
+                self.jointMaxVelocity.append(infos[11])
                 self.joints_key.append(i)
         if self.debug_mode:
             keys = list(self.joint_name.keys())
@@ -64,28 +86,86 @@ class Jaka:
                                                                  self.joint_lower_limits[i],
                                                                  self.joint_upper_limits[i], 0.))
 
-    def control_by_xyz(self):
-        effector_id = self.effector_id
+    def apply_action_joints(self, motor_commands):
+        """
+        Apply the action to the inmoov robot 53 joints that can be moved, so please provide an array with 53 values
+        :param motor_commands: the motor command for the joints of robot, a direct control way
+        """
+        assert len(motor_commands) == len(self.joints_key), "Error, please provide control commands for all joints"
+        num_control = len(motor_commands)
+        target_velocities = [0] * num_control
+        position_gains = [0.3] * num_control
+        velocity_gains = [1] * num_control
+        joint_targets = np.clip(a=motor_commands, a_min=self.joint_lower_limits, a_max=self.joint_upper_limits)
+        p.setJointMotorControlArray(bodyUniqueId=self.jaka_id,
+                                    controlMode=p.POSITION_CONTROL,
+                                    jointIndices=self.joints_key,
+                                    targetPositions=joint_targets,
+                                    targetVelocities=target_velocities,
+                                    forces=self.jointMaxForce,
+                                    positionGains=position_gains,
+                                    velocityGains=velocity_gains
+                                    )
 
-    def render(self):
+    def apply_action_pos(self, pos_commands):
+        dx, dy, dz = pos_commands
+        effector_id = self.effector_id
+        link_pos = p.getLinkState(self.jaka_id, effector_id)
+        self.effector_pos = link_pos[0]
+        target_pos = (self.effector_pos[0] + dx, self.effector_pos[1] + dy, self.effector_pos[2] + dz)
+        rest_poses = self.initial_joints_state
+        joint_ranges = [4] * len(self.joints_key)
+        target_velocity = [0] * len(self.joints_key)
+        if self.use_null_space:
+            joint_poses = p.calculateInverseKinematics(self.jaka_id, effector_id, target_pos,
+                                                       lowerLimits=self.joint_lower_limits,
+                                                       upperLimits=self.joint_upper_limits,
+                                                       jointRanges=joint_ranges,
+                                                       restPoses=rest_poses
+                                                       )
+        else:  # use regular KI solution
+            joint_poses = p.calculateInverseKinematics(self.jaka_id, self.effector_id, target_pos)
+        p.setJointMotorControlArray(self.jaka_id, self.joints_key,
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPositions=joint_poses,
+                                    targetVelocities=target_velocity,
+                                    forces=self.jointMaxForce)
+        p.stepSimulation()
+
+    def _render(self, mode='channel_last', img_name=None):
+        """
+        You could change the Yaw Pitch Roll distance to change the view of the robot
+        :param mode:
+        :return:
+        """
         camera_matrix = p.computeViewMatrixFromYawPitchRoll(
             cameraTargetPosition=self.robot_base_pos,
             distance=2.,
             yaw=145,  # 145 degree
-            pitch=-36,  # -36 degree
+            pitch=-40,  # -45 degree
             roll=0,
             upAxisIndex=2
         )
         proj_matrix1 = p.computeProjectionMatrixFOV(
             fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
-            nearVal=0.1, farVal=100.0)
+            nearVal=0.15, farVal=100.0)
         # depth: the depth camera, mask: mask on different body ID
         (_, _, px, depth, mask) = p.getCameraImage(
             width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=camera_matrix,
             projectionMatrix=proj_matrix1, renderer=p.ER_TINY_RENDERER)
-        tt()
+
         px, depth, mask = np.array(px), np.array(depth), np.array(mask)
-        tt()
+
+        px = px.reshape(RENDER_WIDTH, RENDER_WIDTH, -1)
+        depth = depth.reshape(RENDER_WIDTH, RENDER_WIDTH, -1)
+        mask = mask.reshape(RENDER_WIDTH, RENDER_WIDTH, -1)
+        px = px[..., :-1]
+        if img_name is not None:
+            cv2.imwrite(img_name, px[..., [2, 1, 0]])
+        if mode != 'channel_last':
+            # channel first
+            px = np.transpose(px, [2, 0, 1])
+        return px, depth, mask
 
     def debugger_step(self):
         assert self.debug_mode, "Error: the debugger_step is only allowed in debug mode"
@@ -97,11 +177,12 @@ class Jaka:
             p.resetJointState(self.jaka_id, joint_key, targetValue=joint_state)
         p.stepSimulation()
 
-
-
 if __name__ == '__main__':
     jaka = Jaka(URDF_PATH, debug_mode=False)
     _urdf_path = pybullet_data.getDataPath()
-    # planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
-    # while True:
-    #     jaka.debugger_step()
+    planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
+    i = 0
+    while i < 100:
+        i += 1
+        jaka.apply_action_pos([-0.1, 0.1, 0.2])
+        jaka.render(img_name='trash/out{}.png'.format(i))
