@@ -14,14 +14,15 @@ RENDER_WIDTH, RENDER_HEIGHT = 224, 224
 
 
 class Jaka:
-    def __init__(self, urdf_path, debug_mode=False, use_null_space=True, positional_control=True):
+    def __init__(self, urdf_path, base_position=(0.0, 0.0, 0.2),
+                 debug_mode=False, use_null_space=True, positional_control=True):
         self.urdf_path = urdf_path
         self.debug_mode = debug_mode
         self.positioinal_control = positional_control
 
         self.jaka_id = -1
         self.num_joints = -1
-        self.robot_base_pos = [0, 0, 0]
+        self.robot_base_pos = base_position
         self.joint_lower_limits, self.joint_upper_limits, self.jointMaxForce, self.jointMaxVelocity = \
             [], [], [], []
         self.joint_name = {}
@@ -49,6 +50,8 @@ class Jaka:
     def reset(self):
         self.jaka_id = p.loadURDF(self.urdf_path)
         self.num_joints = p.getNumJoints(self.jaka_id)
+        p.resetBasePositionAndOrientation(self.jaka_id, self.robot_base_pos,
+                                          [0.000000, 0.000000, 0.000000, 1.000000])
         self.get_joint_info()
         for jointIndex in self.joints_key:
             p.resetJointState(self.jaka_id, jointIndex, self.initial_joints_state[jointIndex])
@@ -185,4 +188,4 @@ if __name__ == '__main__':
     while i < 100:
         i += 1
         jaka.apply_action_pos([-0.1, 0.1, 0.2])
-        jaka.render(img_name='trash/out{}.png'.format(i))
+        jaka._render(img_name='trash/out{}.png'.format(i))
