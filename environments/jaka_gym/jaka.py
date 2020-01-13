@@ -69,6 +69,18 @@ class Jaka:
     ##############################################################
     # 我是分割线，下面的函数基本上不太用动了 ############################
     ##############################################################
+    def reset_joints(self):
+        for jointIndex in self.joints_key:
+            p.resetJointState(self.jaka_id, jointIndex, self.initial_joints_state[jointIndex])
+
+    def getGroundTruth(self):
+        if self.positional_control:
+            position = p.getLinkState(self.jaka_id, self.effector_id)[0]
+            return np.array(position)
+        else:  # control by joint and return the joint state (joint position)
+            # we can add joint velocity as joint state, but here we didnt, getJointState can get us more information
+            joints_state = p.getJointStates(self.jaka_id, self.joints_key)
+            return np.array(joints_state)[:, 0]
 
     def get_joint_info(self):
         num_joints = self.num_joints
