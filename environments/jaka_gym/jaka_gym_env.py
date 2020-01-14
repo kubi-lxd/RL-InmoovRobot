@@ -7,6 +7,7 @@ from util.color_print import printGreen, printBlue, printRed, printYellow
 import gym
 from environments.jaka_gym.jaka import Jaka
 from environments.srl_env import SRLGymEnv
+import cv2
 GRAVITY = -9.8
 RENDER_WIDTH, RENDER_HEIGHT = 224, 224
 URDF_PATH = "/urdf_robot/jaka_urdf/jaka_local.urdf"
@@ -16,23 +17,24 @@ def getGlobals():
     :return: (dict)
     """
     return globals()
+# ssh -N -f -L localhost:6006:localhost:8097  tete@283a60820s.wicp.vip -p 17253
+# python -m rl_baselines.train --env JakaButtonGymEnv-v0 --srl-model ground_truth --algo ppo2 --log-dir logs/ --num-cpu 16
 
-
-class JakaGymEnv(SRLGymEnv):
+class JakaButtonGymEnv(SRLGymEnv):
     def __init__(self, urdf_path=URDF_PATH, max_steps=1000,
-                 env_rank=0,
+                 env_rank=0, random_target=False,
                  srl_pipe=None, is_discrete=True,
                  action_repeat=1, srl_model="ground_truth",
                  control_mode = "position",
                  seed=0, debug_mode=False, **_):
-        super(JakaGymEnv, self).__init__(srl_model=srl_model,
+        super(JakaButtonGymEnv, self).__init__(srl_model=srl_model,
                                            relative_pos=True,
                                            env_rank=env_rank,
                                            srl_pipe=srl_pipe)
 
         self.seed(seed)
         self.urdf_path = urdf_path
-
+        self._random_target = random_target
         self._observation = None
         self.debug_mode = debug_mode
         self._inmoov = None
@@ -54,6 +56,21 @@ class JakaGymEnv(SRLGymEnv):
         self.state_dim = self.getGroundTruthDim()
         self._first_reset_flag = False
 
+        if debug_mode:
+            client_id = p.connect(p.SHARED_MEMORY)
+            if client_id < 0:
+                p.connect(p.GUI)
+            p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.2, -0.33])
+        else:
+            p.connect(p.DIRECT)
+        self.action_space = spaces.Discrete(6)
+        if self.srl_model == "raw_pixels":
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        else:  # Todo: the only possible observation for srl_model is ground truth
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32)
+
+        self.reset()
+
     def reset(self, generated_observation=None, state_override=None):
         self._step_counter = 0
         self.terminated = False
@@ -67,41 +84,56 @@ class JakaGymEnv(SRLGymEnv):
 
             self._jaka = Jaka(urdf_path=self.urdf_path, positional_control=self.position_control)
             self._jaka_id = self._jaka.jaka_id
+            x_pos = 0.5
+            y_pos = 0
+            if self._random_target:
+                x_pos += 0.15 * self.np_random.uniform(-1, 1)
+                y_pos += 0.3 * self.np_random.uniform(-1, 1)
 
-            self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, Z_TABLE])
-            self.button_pos = np.array([x_pos, y_pos, Z_TABLE])
+            self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0])
+            self.button_pos = np.array([x_pos, y_pos, 0])
 
-        print('fast reset,resetting robot joints')
         self._jaka.reset_joints()
         # p.resetSimulation()
         # p.setPhysicsEngineParameter(numSolverIterations=150)
         # p.setGravity(0., 0., GRAVITY)
-        return self.get_observation()
+        self._observation = self.get_observation()
+        # if self.srl_model == "raw_pixels":
+        #     self._observation = self._observation[0]
+        return self._observation
 
-    def getSRLState(self, observation):
-        return
+    def getTargetPos(self):
+        return self.button_pos
 
     def getGroundTruth(self):
-        return
+        return self._jaka.getGroundTruth()
 
     def _reward(self):
-        raise NotImplementedError()
+        # TODO: reward bad definition
+        return - np.linalg.norm(self.getGroundTruth() - self.getTargetPos())
 
     def _termination(self):
         if self.terminated or self._step_counter > self.max_steps:
             return True
         return False
 
-    def getGroundTruthDim(self):
-        if self.position_control:
-            return 3
+    def get_observation(self):
+        if self.srl_model == "ground_truth":
+            if self.relative_pos:
+                return self.getGroundTruth() - self.getTargetPos()
+            return self.getGroundTruth()
+        elif self.srl_model == "raw_pixels":
+            return self.render()[0]
         else:
-            return 6
+            return NotImplementedError()
 
+    @staticmethod
+    def getGroundTruthDim():
+        return 3
 
 
     def step(self, action, generated_observation=None, action_proba=None, action_grid_walker=None):
-        if self._jaka.positioinal_control and self.discrete_action:
+        if self.position_control and self.discrete_action:
             dv = 1.
             dx = [-dv, dv, 0, 0, 0, 0][action]
             dy = [0, 0, -dv, dv, 0, 0][action]
@@ -117,14 +149,47 @@ class JakaGymEnv(SRLGymEnv):
             infos = {}
             return np.array(obs), reward, done, infos
 
+    def render(self, mode='channel_last', img_name=None):
+        """
+        You could change the Yaw Pitch Roll distance to change the view of the robot
+        :param mode:
+        :return:
+        """
+        camera_matrix = p.computeViewMatrixFromYawPitchRoll(
+            cameraTargetPosition=self._jaka.robot_base_pos,
+            distance=2.,
+            yaw=145,  # 145 degree
+            pitch=-40,  # -45 degree
+            roll=0,
+            upAxisIndex=2
+        )
+        proj_matrix1 = p.computeProjectionMatrixFOV(
+            fov=60, aspect=float(RENDER_WIDTH) / RENDER_HEIGHT,
+            nearVal=0.15, farVal=100.0)
+        # depth: the depth camera, mask: mask on different body ID
+        (_, _, px, depth, mask) = p.getCameraImage(
+            width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=camera_matrix,
+            projectionMatrix=proj_matrix1, renderer=p.ER_TINY_RENDERER)
 
+        px, depth, mask = np.array(px), np.array(depth), np.array(mask)
 
-
+        px = px.reshape(RENDER_HEIGHT, RENDER_WIDTH, -1)
+        depth = depth.reshape(RENDER_HEIGHT, RENDER_WIDTH, -1)
+        mask = mask.reshape(RENDER_HEIGHT, RENDER_WIDTH, -1)
+        px = px[..., :-1]
+        if img_name is not None:
+            cv2.imwrite(img_name, px[..., [2, 1, 0]])
+        if mode != 'channel_last':
+            # channel first
+            px = np.transpose(px, [2, 0, 1])
+        return px, depth, mask
 
 if __name__ == '__main__':
-    jaka = JakaGymEnv()
+    jaka = JakaButtonGymEnv()
     i = 0
     while i < 100:
         i += 1
         jaka.step(1)
-        jaka._render(img_name='trash/out{}.png'.format(i))
+        printYellow(jaka._reward())
+        jaka.render(img_name='trash/out{}.png'.format(i))
+        # jaka._render(img_name='trash/out{}.png'.format(i))

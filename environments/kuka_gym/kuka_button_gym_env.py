@@ -18,13 +18,13 @@ MAX_STEPS = 1000  # WARNING: should be also change in __init__.py (timestep_limi
 N_CONTACTS_BEFORE_TERMINATION = 5
 # Terminate the episode if the arm is outside the safety sphere during too much time
 N_STEPS_OUTSIDE_SAFETY_SPHERE = 5000
-RENDER_HEIGHT = 256
-RENDER_WIDTH = 256
+RENDER_HEIGHT = 224
+RENDER_WIDTH = 224
 Z_TABLE = -0.2
 N_DISCRETE_ACTIONS = 6
 BUTTON_LINK_IDX = 1
 BUTTON_GLIDER_IDX = 1  # Button glider joint
-DELTA_V = 0.1  # velocity per physics step.
+DELTA_V = 0.03  # velocity per physics step.
 DELTA_V_CONTINUOUS = 0.0035  # velocity per physics step (for continuous actions).
 DELTA_THETA = 0.1  # angular velocity per physics step.
 RELATIVE_POS = True  # Use relative position for ground truth
@@ -167,10 +167,10 @@ class KukaButtonGymEnv(SRLGymEnv):
         elif self.srl_model == "joints_position":
             self.state_dim = self.getGroundTruthDim() + self.getJointsDim()
 
-        #if self.srl_model == "raw_pixels":
-        #    self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
-        #else:
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
+        if self.srl_model == "raw_pixels":
+            self.observation_space = spaces.Box(low=0, high=255, shape=(self._height, self._width, 3), dtype=np.uint8)
+        else:
+            self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_dim,), dtype=np.float32)
 
     def getSRLState(self, observation):
         state = []
@@ -313,7 +313,6 @@ class KukaButtonGymEnv(SRLGymEnv):
             finger_angle = 0.0  # Close the gripper
             # real_action = [dx, dy, -0.002, da, finger_angle]
             real_action = [dx, dy, dz, 0, finger_angle]
-            # print("Action: [dx, dy, dz, 0, finger_angle]: {}".format(real_action))
         else:
             if self.action_joints:
                 arm_joints = np.array(self._kuka.joint_positions)[:7]
@@ -417,6 +416,7 @@ class KukaButtonGymEnv(SRLGymEnv):
             rgb_array2 = np.array(px2)
             rgb_array_res = np.concatenate((rgb_array1[:, :, :3], rgb_array2[:, :, :3]), axis=2)
         else:
+            rgb_array1 = rgb_array1.reshape(RENDER_WIDTH, RENDER_WIDTH, -1)
             rgb_array_res = rgb_array1[:, :, :3]
         return rgb_array_res
 

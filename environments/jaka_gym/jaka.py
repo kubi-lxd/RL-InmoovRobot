@@ -5,7 +5,6 @@ import pybullet as p
 import pybullet_data
 import cv2
 
-from ipdb import set_trace as tt
 from util.color_print import printGreen, printBlue, printRed, printYellow
 
 URDF_PATH = "/urdf_robot/jaka_urdf/jaka_local.urdf"
@@ -18,7 +17,7 @@ class Jaka:
                  debug_mode=False, use_null_space=True, positional_control=True):
         self.urdf_path = urdf_path
         self.debug_mode = debug_mode
-        self.positioinal_control = positional_control
+        self.positional_control = positional_control
 
         self.jaka_id = -1
         self.num_joints = -1
@@ -58,7 +57,7 @@ class Jaka:
         p.stepSimulation()
 
     def apply_action(self, action):
-        if self.positioinal_control:
+        if self.positional_control:
             self.apply_action_pos(action)
         else:
             self.apply_action_joints(action)
@@ -191,6 +190,7 @@ class Jaka:
         for joint_state, joint_key in zip(current_joints, self.joints_key):
             p.resetJointState(self.jaka_id, joint_key, targetValue=joint_state)
         p.stepSimulation()
+
 
 if __name__ == '__main__':
     jaka = Jaka(URDF_PATH, debug_mode=False)
