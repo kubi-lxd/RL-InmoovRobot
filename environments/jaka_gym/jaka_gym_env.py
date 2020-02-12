@@ -86,6 +86,7 @@ class JakaButtonGymEnv(SRLGymEnv):
             self._jaka_id = self._jaka.jaka_id
             x_pos = 0.5
             y_pos = 0
+            
             if self._random_target:
                 x_pos += 0.15 * self.np_random.uniform(-1, 1)
                 y_pos += 0.3 * self.np_random.uniform(-1, 1)
