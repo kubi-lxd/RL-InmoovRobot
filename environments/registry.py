@@ -15,6 +15,7 @@ from environments.mobile_robot.mobile_robot_1D_env import MobileRobot1DGymEnv
 from environments.mobile_robot.mobile_robot_line_target_env import MobileRobotLineTargetGymEnv
 from environments.inmoov.inmoov_onearm_button_env import InmoovOneArmButtonGymEnv
 from environments.jaka_gym.jaka_gym_env import JakaButtonGymEnv
+from environments.jaka_gym.obstacle_gym_env import JakaButtonObsGymEnv
 # from environments.gym_baxter.baxter_env import BaxterEnv
 # from environments.robobo_gym.robobo_env import RoboboEnv
 # from environments.omnirobot_gym.omnirobot_env import OmniRobotEnv
@@ -51,8 +52,8 @@ registered_env = {
     "MobileRobot1DGymEnv-v0":         (MobileRobot1DGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobotLineTargetGymEnv-v0": (MobileRobotLineTargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "InmoovGymEnv-v0":                (InmoovGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
-    "InmoovOneArmButtonGymEnv-v0":(InmoovOneArmButtonGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
-    "JakaButtonGymEnv-v0":            (JakaButtonGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS)
+    "InmoovOneArmButtonGymEnv-v0":    (InmoovOneArmButtonGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
+    "JakaButtonGymEnv-v0":            (JakaButtonObsGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS)
     #"Baxter-v0":                      (BaxterEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.NONE),
     #"RoboboGymEnv-v0":                (RoboboEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.NONE),
     #"OmnirobotEnv-v0":                (OmniRobotEnv, SRLGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
