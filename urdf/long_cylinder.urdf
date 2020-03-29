@@ -9,13 +9,13 @@
     <collision name="cylinder_button_collision">
       <origin rpy="0  0  0" xyz="0  0  0"/>
       <geometry>
-        <mesh filename="meshes/button.dae" scale="1.0 1.0 20.0"/>
+        <mesh filename="meshes/button.dae" scale="0.2 0.2 40.0"/>
       </geometry>
     </collision>
     <visual name="cylinder_button_visual">
       <origin rpy="0  0  0" xyz="0  0  0"/>
       <geometry>
-        <mesh filename="meshes/button.dae" scale="1.0 1.0 20.0"/>
+        <mesh filename="meshes/button.dae" scale="0.2 0.2 40.0"/>
       </geometry>
       <material name="yellow">
         <color rgba="1 1 0 1"/>

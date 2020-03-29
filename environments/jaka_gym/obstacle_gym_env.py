@@ -21,7 +21,7 @@ def getGlobals():
 # python -m rl_baselines.train --env JakaButtonGymEnv-v0 --srl-model ground_truth --algo ppo2 --log-dir logs/ --num-cpu 16
 
 class JakaButtonObsGymEnv(SRLGymEnv):
-    def __init__(self, urdf_path=URDF_PATH, max_steps=1000,
+    def __init__(self, urdf_path=URDF_PATH, max_steps=250,
                  env_rank=0, random_target=False,
                  srl_pipe=None, is_discrete=True,
                  action_repeat=1, srl_model="ground_truth",
@@ -60,7 +60,7 @@ class JakaButtonObsGymEnv(SRLGymEnv):
             client_id = p.connect(p.SHARED_MEMORY)
             if client_id < 0:
                 p.connect(p.GUI)
-            p.resetDebugVisualizerCamera(5., 180, -41, [0.52, -0.5, 0.5])
+            p.resetDebugVisualizerCamera(2., 180, -41, [0., -0.1, 0.1])
         else:
             p.connect(p.DIRECT)
         self.action_space = spaces.Discrete(6)
@@ -86,14 +86,14 @@ class JakaButtonObsGymEnv(SRLGymEnv):
             self._jaka = Jaka(urdf_path=self.urdf_path, positional_control=self.position_control)
             self._jaka_id = self._jaka.jaka_id
             x_pos = -0.1
-            y_pos = 0.4
+            y_pos = 0.55
             
             if self._random_target:
                 x_pos += 0.15 * self.np_random.uniform(-1, 1)
                 y_pos += 0.3 * self.np_random.uniform(-1, 1)
-            obs_x, obs_y = 0.3, 0.3
+            self.obs_x, self.obs_y = 0.3, 0.4
             self.button_uid = p.loadURDF("/urdf/simple_button.urdf", [x_pos, y_pos, 0])
-            self.obstacle_id = p.loadURDF("/urdf/long_cylinder.urdf", [obs_x, obs_y, 0])
+            self.obstacle_id = p.loadURDF("/urdf/long_cylinder.urdf", [self.obs_x, self.obs_y, 0])
             self.button_pos = np.array([x_pos, y_pos, 0])
 
         self._jaka.reset_joints()
@@ -119,16 +119,19 @@ class JakaButtonObsGymEnv(SRLGymEnv):
         r = 0
         if contact_obs > 0:
             self.terminated = True
-            r = - contact_obs
+            r = - 10 * contact_obs
         else:
             distance = np.linalg.norm(self.getGroundTruth() - self.getTargetPos())
             if distance < 0.1:
                 r += 10
+                self.terminated = True
             else:
-                r = 1 / distance
+                r = 1 / distance - (self._step_counter / self.max_steps) * 2
         return r
 
     def _termination(self):
+        # print(s)
+        # print(self._step_counter, self._step_counter > self.max_steps)
         if self.terminated or self._step_counter > self.max_steps:
             return True
         return False
@@ -148,6 +151,28 @@ class JakaButtonObsGymEnv(SRLGymEnv):
         return 3
 
     def step(self, action, generated_observation=None, action_proba=None, action_grid_walker=None):
+        sinus_moving = False
+        random_moving = True
+        assert int(sinus_moving) + int(random_moving) < 2
+        if sinus_moving:
+            # p.loadURDF()
+            maxx, maxy = self.obs_x, self.obs_y
+            time_ratio = np.pi*2*(self._step_counter / self.max_steps)
+            obs_x, obs_y = np.cos(time_ratio), maxy
+            p.resetBasePositionAndOrientation(self.obstacle_id, [obs_x, obs_y, 0], [0,0,0,1])
+        if random_moving:
+            xnow, ynow = self.obs_x, self.obs_y
+            fields_x = [0.3-0.2, 0.3+0.2]
+            fields_y = [0.4-0.3, 0.4+0.2]
+            obs_step = 0.1
+            move_x = np.random.uniform(-0.1,0.1)
+            move_y = np.sqrt(obs_step**2-move_x**2) * (2*(np.random.uniform()>0.5)-1)
+            self.obs_x = np.clip(xnow + move_x, fields_x[0], fields_x[1])
+            self.obs_y = np.clip(ynow + move_y, fields_y[0], fields_y[1])
+            p.resetBasePositionAndOrientation(self.obstacle_id, [self.obs_x, self.obs_y, 0], [0, 0, 0, 1])
+
+
+
         if self.position_control and self.discrete_action:
             dv = 1.
             dx = [-dv, dv, 0, 0, 0, 0][action]
@@ -200,21 +225,21 @@ class JakaButtonObsGymEnv(SRLGymEnv):
         return px, depth, mask
 
 if __name__ == '__main__':
-    jaka = JakaButtonObsGymEnv(debug_mode=False)
+    jaka = JakaButtonObsGymEnv(debug_mode=True)
     i = 0
     for i in range(10):
         jaka.step(0)
         jaka.step(3)
         jaka.step(3)
         printYellow(jaka._reward())
+        # jaka.render(img_name='trash/out{}.png'.format(i))
+    import time
+    while True:
+        i += 1
+        # jaka.step(0)
+        # jaka.step(3)
+        jaka.step(np.random.randint(0,6))
+        time.sleep(0.1)
+        printYellow(jaka._reward())
+        #
         jaka.render(img_name='trash/out{}.png'.format(i))
-    #
-    # while True:
-    #
-    #     i += 1
-    #     jaka.step(0)
-    #     jaka.step(3)
-    #     time.sleep(0.2)
-    #     printYellow(jaka._reward())
-    #     #
-    #     # jaka._render(img_name='trash/out{}.png'.format(i))
