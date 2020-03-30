@@ -1,10 +1,9 @@
 import zmq
-
+from zmq import ssh
 import numpy as np
 
 from environments.inmoov.inmoov_p2p_client_ready import InmoovGymEnv
-from ipdb import set_trace as tt
-
+from .inmoov_server import server_connection, client_ssh_connection, client_connection
 
 SERVER_PORT = 7777
 HOSTNAME = 'localhost'
@@ -19,7 +18,6 @@ def send_array(socket, A, flags=0, copy=True, track=False):
     return socket.send(A, flags, copy=copy, track=track)
 
 def test_inmoov_gym():
-
     while True:
         k = input()
         try:
@@ -33,18 +31,18 @@ def test_inmoov_gym():
             continue
         # robot.step()
 
-
 if __name__ == "__main__":
-    context = zmq.Context()
-    socket = context.socket(zmq.PAIR)
-    socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
-    print("Waiting for server")
-    msg = socket.recv_json()
-    # resend message to ensure the integrity of the msg
-    socket.send_json(msg)
-    print("Server Connected")
+    socket = server_connection()
+    # context = zmq.Context()
+    # socket = context.socket(zmq.PAIR)
+    # socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
+    # print("Waiting for server")
+    # msg = socket.recv_json()
+    # # resend message to ensure the integrity of the msg
+    # socket.send_json(msg)
+    # print("Server Connected")
 
-    robot = InmoovGymEnv(debug_mode=True, positional_control=False)
+    robot = InmoovGymEnv(debug_mode=False, positional_control=False)
     init_pose = robot._inmoov.get_joints_pos()
     joints_num = len(init_pose)
 
@@ -59,6 +57,7 @@ if __name__ == "__main__":
             send_array(socket, np.array(done), flags=0, copy=True, track=False)
             send_array(socket, px, flags=0, copy=True, track=False)
             send_array(socket, end_position, flags=0, copy=True, track=False)
+            print("message sent")
         elif command == "action":
             print(1)
         elif command == "done":

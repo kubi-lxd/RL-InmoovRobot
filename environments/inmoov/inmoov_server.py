@@ -1,16 +1,60 @@
 import zmq, sys
-
+from zmq import ssh
 from matplotlib import pyplot as plt
 import numpy as np
 import time
-
-from .joints_registry import joint_info
 from ipdb import set_trace as tt
 
+from .joints_registry import joint_info
 # from environments.inmoov.inmoov_p2p_client_ready import InmoovGymEnv
 
 SERVER_PORT = 7777
 HOSTNAME = 'localhost'
+SSH_NAME = "******" # SSH ip
+SSH_PORT = 00000 # SSH port
+SSH_PWD = "*****" # SSH passwords
+USER_NAME = "tete" # SSH username
+
+def server_connection():
+    context = zmq.Context()
+    socket = context.socket(zmq.PAIR)
+    socket.bind("tcp://*:{}".format(SERVER_PORT))
+    print("Waiting for the client")
+    line = "Hello Big Man"
+    socket.send_json({'msg': line})
+    msg = socket.recv_json()
+    assert 'msg' in msg and msg['msg'] == line, "Connection failed, check server and client configuration"
+    print("Client Connected")
+    return socket
+
+def client_connection():
+    context = zmq.Context()
+    socket = context.socket(zmq.PAIR)
+    socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
+    print("Waiting for server")
+    msg = socket.recv_json()
+    # resend message to ensure the integrity of the msg
+    socket.send_json(msg)
+    print("Server Connected")
+    return socket
+
+def client_ssh_connection():
+    context = zmq.Context()
+    socket = context.socket(zmq.PAIR)
+    password = SSH_PWD
+    username = USER_NAME
+    server_port = SSH_PORT
+    server_name = SSH_NAME
+    server = "{}@{}:{}".format(username, server_name, server_port)
+    addr = "tcp://{}:{}".format(HOSTNAME, SERVER_PORT)
+    tunnuel = ssh.tunnel_connection(socket, addr=addr, server=server, password=password)
+    print("Waiting for server")
+    msg = socket.recv_json()
+    # resend message to ensure the integrity of the msg
+    socket.send_json(msg)
+    print("send: {}".format(msg))
+    print("Server Connected")
+    return socket
 
 def recv_array(socket, flags=0, copy=True, track=False):
     """recv a numpy array"""
@@ -35,21 +79,21 @@ def plot_robot_view(left_px, right_px):
     plt.pause(0.00001)
 
 if __name__ == "__main__":
-    context = zmq.Context()
-    socket = context.socket(zmq.PAIR)
-    socket.bind("tcp://*:{}".format(SERVER_PORT))
+    socket = client_ssh_connection()
+    # context = zmq.Context()
+    # socket = context.socket(zmq.PAIR)
+    # # socket.bind("tcp://*:{}".format(SERVER_PORT))
+    # print("Connecting")
+    # # HOSTNAME = "283a60820s.wicp.vip"
+    # # SERVER_PORT = 17253
+    # socket.bind("tcp://*:{}".format(SERVER_PORT))
+    # # ssh.tunnel_connection(socket, "")
+    # print("Connected")
 
     # get joint information
     joint_info = np.array([p[:1]+p[2:] for p in joint_info])
+    # joint_low_limit, joint_high_limit = np.zeros(shape=(53,)), np.ones(shape=(53,))
     joint_low_limit, joint_high_limit = joint_info[:, 1], joint_info[:, 2]
-
-    print("Waiting for the client")
-    line = "Hello Big Man"
-    socket.send_json({'msg': line})
-    msg = socket.recv_json()
-    assert 'msg' in msg and msg['msg'] == line, "Connection failed, check server and client configuration"
-    print("Client Connected")
-
     step = 0
     # TODO: please modify this part to control the robot
     while True:
@@ -58,9 +102,7 @@ if __name__ == "__main__":
         step += 1
         position = np.random.uniform(low=joint_low_limit*0.1, high=joint_high_limit*0.1)
         msg = {"command":"position", "position": position.tolist()}
-
         socket.send_json(msg)
-
         step_data = []
         for i in range(5):
             step_data.append(recv_array(socket))
@@ -69,9 +111,6 @@ if __name__ == "__main__":
         reward = np.squeeze(step_data[1])
         done = np.squeeze(step_data[2])
         effector_position = step_data[4]
+        # print(joint_state - position)
         plot_robot_view(left_px, right_px)
 
-
-
-
-    # test_inmoov_gym()
