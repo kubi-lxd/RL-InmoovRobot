@@ -79,16 +79,13 @@ def plot_robot_view(left_px, right_px):
     plt.pause(0.00001)
 
 if __name__ == "__main__":
+    # For remote server #
     socket = client_ssh_connection()
-    # context = zmq.Context()
-    # socket = context.socket(zmq.PAIR)
-    # # socket.bind("tcp://*:{}".format(SERVER_PORT))
-    # print("Connecting")
-    # # HOSTNAME = "283a60820s.wicp.vip"
-    # # SERVER_PORT = 17253
-    # socket.bind("tcp://*:{}".format(SERVER_PORT))
-    # # ssh.tunnel_connection(socket, "")
-    # print("Connected")
+
+    #############################
+    #### local version ##########
+    #############################
+    # socket = client_connection()
 
     # get joint information
     joint_info = np.array([p[:1]+p[2:] for p in joint_info])

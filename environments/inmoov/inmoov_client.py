@@ -33,15 +33,6 @@ def test_inmoov_gym():
 
 if __name__ == "__main__":
     socket = server_connection()
-    # context = zmq.Context()
-    # socket = context.socket(zmq.PAIR)
-    # socket.connect("tcp://{}:{}".format(HOSTNAME, SERVER_PORT))
-    # print("Waiting for server")
-    # msg = socket.recv_json()
-    # # resend message to ensure the integrity of the msg
-    # socket.send_json(msg)
-    # print("Server Connected")
-
     robot = InmoovGymEnv(debug_mode=False, positional_control=False)
     init_pose = robot._inmoov.get_joints_pos()
     joints_num = len(init_pose)
