@@ -3,16 +3,18 @@ from zmq import ssh
 from matplotlib import pyplot as plt
 import numpy as np
 import time
+import cv2
 from ipdb import set_trace as tt
 
+from share_control.ui_cv import Slider
 from .joints_registry import joint_info
 # from environments.inmoov.inmoov_p2p_client_ready import InmoovGymEnv
 
 SERVER_PORT = 7777
 HOSTNAME = 'localhost'
-SSH_NAME = "******" # SSH ip
-SSH_PORT = 00000 # SSH port
-SSH_PWD = "*****" # SSH passwords
+SSH_NAME = "283a60820s.wicp.vip" # SSH ip
+SSH_PORT = 17253 # SSH port
+SSH_PWD = "SJJLPPsunte95" # SSH passwords
 USER_NAME = "tete" # SSH username
 
 def server_connection():
@@ -78,6 +80,21 @@ def plot_robot_view(left_px, right_px):
     plt.draw()
     plt.pause(0.00001)
 
+def plot_robot_view_cv(left_px, right_px):
+    """
+    Use opencv to create the windows
+    :param left_px:
+    :param right_px:
+    :return:
+    """
+    name = "Inmoov"
+    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(name, 800, 400)
+    image = np.hstack([left_px, right_px])
+    cv2.imshow(name, image)
+    cv2.waitKey(0) & 0xFF
+    return
+
 if __name__ == "__main__":
     # For remote server #
     socket = client_ssh_connection()
@@ -88,16 +105,31 @@ if __name__ == "__main__":
     # socket = client_connection()
 
     # get joint information
+    joint_name = [n[1] for n in joint_info]
     joint_info = np.array([p[:1]+p[2:] for p in joint_info])
     # joint_low_limit, joint_high_limit = np.zeros(shape=(53,)), np.ones(shape=(53,))
     joint_low_limit, joint_high_limit = joint_info[:, 1], joint_info[:, 2]
     step = 0
     # TODO: please modify this part to control the robot
+    slider = Slider(win_name="Inmoov", dimension=len(joint_low_limit),
+                    sample_freq=100,
+                    slider_name=joint_name,
+                    low=joint_low_limit, high=joint_high_limit)
+    position = None
+    old_position = None
     while True:
-        time.sleep(0.2)
+        # time.sleep(0.2)
         print("Step: {}".format(step))
         step += 1
-        position = np.random.uniform(low=joint_low_limit*0.1, high=joint_high_limit*0.1)
+        slider_position = slider.get_slider_data()
+        # position = np.random.uniform(low=joint_low_limit*0.1, high=joint_high_limit*0.1)
+        old_position = position
+        position = slider_position
+        if old_position is not None and position is not None:
+            old_data, data_new = old_position, position
+            for j, e in enumerate(data_new):
+                if e != old_data[j]:
+                    print("Change at {}, from {:.2f} to {:.2f}".format(joint_name[j], old_data[j], data_new[j]))
         msg = {"command":"position", "position": position.tolist()}
         socket.send_json(msg)
         step_data = []
@@ -111,3 +143,4 @@ if __name__ == "__main__":
         # print(joint_state - position)
         plot_robot_view(left_px, right_px)
 
+    cv2.destroyAllWindows()
