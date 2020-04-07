@@ -95,16 +95,7 @@ def plot_robot_view_cv(left_px, right_px):
     cv2.waitKey(0) & 0xFF
     return
 
-if __name__ == "__main__":
-    # For remote server #
-    socket = client_ssh_connection()
-
-    #############################
-    #### local version ##########
-    #############################
-    # socket = client_connection()
-
-    # get joint information
+def joint_controller(socket, joint_info):
     joint_name = [n[1] for n in joint_info]
     joint_info = np.array([p[:1]+p[2:] for p in joint_info])
     # joint_low_limit, joint_high_limit = np.zeros(shape=(53,)), np.ones(shape=(53,))
@@ -122,9 +113,12 @@ if __name__ == "__main__":
         print("Step: {}".format(step))
         step += 1
         slider_position = slider.get_slider_data()
+        if slider_position is None:
+            break
         # position = np.random.uniform(low=joint_low_limit*0.1, high=joint_high_limit*0.1)
         old_position = position
         position = slider_position
+        # to print the change of the position
         if old_position is not None and position is not None:
             old_data, data_new = old_position, position
             for j, e in enumerate(data_new):
@@ -140,7 +134,65 @@ if __name__ == "__main__":
         reward = np.squeeze(step_data[1])
         done = np.squeeze(step_data[2])
         effector_position = step_data[4]
+        print(effector_position)
         # print(joint_state - position)
         plot_robot_view(left_px, right_px)
 
     cv2.destroyAllWindows()
+
+
+def position_controller(socket):
+    pos_name = ['x', 'y', 'z']
+    low_limit, high_limit = np.array([0, -2, 0]), np.array([1, 2, 2])
+    step = 0
+    init_position = np.array([0.7, -0.01, 1.6802])
+    # TODO: please modify this part to control the robot
+    slider = Slider(win_name="Inmoov", dimension=3,
+                    sample_freq=100,
+                    slider_name=pos_name,
+                    low=low_limit, high=high_limit,
+                    init_pos=init_position)
+    position = None
+    old_position = None
+    while True:
+        # time.sleep(0.2)
+        print("Step: {}".format(step))
+        step += 1
+        slider_position = slider.get_slider_data()
+        if slider_position is None:
+            break
+        # position = np.random.uniform(low=joint_low_limit*0.1, high=joint_high_limit*0.1)
+        old_position = position
+        position = slider_position
+        # to print the change of the position
+        if old_position is not None and position is not None:
+            old_data, data_new = old_position, position
+            for j, e in enumerate(data_new):
+                if e != old_data[j]:
+                    print("Change at {}, from {:.2f} to {:.2f}".format(pos_name[j], old_data[j], data_new[j]))
+        msg = {"command": "position", "position": position.tolist()}
+        socket.send_json(msg)
+        step_data = []
+        for i in range(5):
+            step_data.append(recv_array(socket))
+        joint_state = step_data[0]
+        left_px, right_px = step_data[3][0], step_data[3][1]
+        reward = np.squeeze(step_data[1])
+        done = np.squeeze(step_data[2])
+        effector_position = step_data[4]
+        # print(joint_state - position)
+        plot_robot_view(left_px, right_px)
+
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    # For remote server #
+    socket = client_ssh_connection()
+
+    #############################
+    #### local version ##########
+    #############################
+    # socket = client_connection()
+
+    # joint_controller(socket, joint_info=joint_info)
+    position_controller(socket)

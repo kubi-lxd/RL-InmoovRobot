@@ -30,6 +30,7 @@ class InmoovGymEnv(SRLGymEnv):
                  action_repeat=1, srl_model="ground_truth",
                  seed=0, debug_mode=False, render=False,
                  positional_control=True,
+                 discrete=True,
                  **kwargs):
         """
 
@@ -91,7 +92,7 @@ class InmoovGymEnv(SRLGymEnv):
         self.reset()
         # if positional control, then let the control to be discrete, continue otherwise
         if self.positional_control:
-            self.action_space = spaces.Discrete(6)
+            self.action_space = spaces.Discrete(6) if discrete else spaces.Box(np.array([-1,-1, 0]), np.array([1,1,2]))
         else:
             low = np.array(self._inmoov.joint_lower_limits)
             high = np.array(self._inmoov.joint_upper_limits)
@@ -180,22 +181,15 @@ class InmoovGymEnv(SRLGymEnv):
         self._inmoov.apply_action_pos(action)
 
     def server_step(self, action):
+        # directly control by the position, whether the joint poses or the end of the effector
         if self.positional_control:
-            if action is None:
-                action = np.array([0, 0, 0])
-            dv = 1.2
-            dx = [-dv, dv, 0, 0, 0, 0][action]
-            dy = [0, 0, -dv, dv, 0, 0][action]
-            dz = [0, 0, 0, 0, -dv, dv][action]
-            action = [dx, dy, dz]
-            for i in range(self.action_repeat):
-                self._inmoov.apply_action_pos(action)
-                p.stepSimulation()
+            self._inmoov.apply_position_pos(action)
+            p.stepSimulation()
             self._step_counter += 1
         else:  # control by joint, continual control
             assert len(action) == self.action_space.shape[0]
-            for i in range(self.action_repeat):
-                self._inmoov.apply_action_joints(action)
+            self._inmoov.apply_action_joints(action)
+            self._step_counter += 1
         reward = self._reward()
         obs = self.get_observation()
         done = self._termination()

@@ -197,6 +197,32 @@ class Inmoov:
         self.effector_pos = current_state
         p.stepSimulation()
 
+    def apply_position_pos(self, motor_commands):
+        joint_position = p.getLinkState(self.inmoov_id, self.effectorId)
+
+        current_state = joint_position[0]
+        self.effector_pos = current_state
+        target_pos = motor_commands
+        num_control_joints = len(self.joints_key)
+        # position at rest
+        rest_poses = [0] * num_control_joints
+        # don't know what is its influence
+        joint_ranges = [4] * num_control_joints
+
+        target_velocity = [0] * num_control_joints
+        joint_poses = p.calculateInverseKinematics(self.inmoov_id, self.effectorId, target_pos,
+                                                   lowerLimits=self.joint_lower_limits,
+                                                   upperLimits=self.joint_upper_limits,
+                                                   jointRanges=joint_ranges,
+                                                   restPoses=rest_poses)
+        p.setJointMotorControlArray(self.inmoov_id, self.joints_key,
+                                    controlMode=p.POSITION_CONTROL,
+                                    targetPositions=joint_poses,
+                                    targetVelocities=target_velocity,
+                                    #  maxVelocities=self.jointMaxVelocity,
+                                    forces=self.jointMaxForce)
+        p.stepSimulation()
+
     def apply_action_pos(self, motor_commands):
         """
         Apply the action to the inmoov robot joint.

@@ -9,9 +9,9 @@ JOINT_NAME = [n[1] for n in joint_info]
 
 
 class Slider:
-    def __init__(self, win_name, dimension, sample_freq=10, slider_name=None, low=None, high=None):
+    def __init__(self, win_name, dimension, sample_freq=10,
+                 slider_name=None, low=None, high=None, init_pos=None):
         """
-
         :param win_name: the name for the slider pop up window
         :param dimension: total number of sliders
         :param sample_freq: the sample frequency from the slider
@@ -30,7 +30,7 @@ class Slider:
             self.slider_name = [str(i) for i in range(dimension)]
         else:
             self.slider_name = slider_name
-        self.create_slider()
+        self.create_slider(init_pos)
 
     def joint_info_process(self):
         """
@@ -66,10 +66,12 @@ class Slider:
         data = (data - b) / a
         return data
 
-    def create_slider(self):
+    def create_slider(self, init_pos=None):
         cv2.namedWindow(self.win_name, cv2.WINDOW_FREERATIO)
         cv2.resizeWindow(self.win_name, 500, 500)
-        init_value = self.ab[:, 1]
+        if init_pos is None:
+            init_pos = np.zeros(shape=(len(self.ab,)))
+        init_value = self.ab[:, 1] + self.ab[:, 0] * init_pos
         for i in range(self.dim):
             cv2.createTrackbar(self.slider_name[i], self.win_name, int(init_value[i]), 100, (lambda x: None))
 

@@ -6,8 +6,8 @@ import pybullet_data
 import numpy as np
 from ipdb import set_trace as tt
 # from environments.inmoov.inmoov import Inmoov
-from environments.inmoov.inmoov_p2p import InmoovGymEnv
-
+# from environments.inmoov.inmoov_p2p import InmoovGymEnv
+from environments.inmoov.inmoov_p2p_client_ready import InmoovGymEnv
 from environments.inmoov.inmoov_view_test import Inmoov
 
 
@@ -31,15 +31,15 @@ def test_inmoov():
 
 
 def test_inmoov_gym():
-    robot = InmoovGymEnv(debug_mode=True)
+    robot = InmoovGymEnv(debug_mode=False, render=False)
     while True:
         time.sleep(0.5)
         # robot.step([-0.1,0.0,0.0])
-        robot.guided_step()
+        robot.server_step([0.7, -0.01, 1.6802])
         # robot.step()
 
 def test_robot_view():
-    robot = Inmoov(debug_mode=True, )
+    robot = Inmoov(debug_mode=False, )
     _urdf_path = pybullet_data.getDataPath()
     planeId = p.loadURDF(os.path.join(_urdf_path, "plane.urdf"))
     # 这是个足球场的环境， 注释掉上面一行，运行下一行可见
@@ -54,6 +54,6 @@ def test_robot_view():
         robot.debugger_step()
 
 if __name__ == '__main__':
-    # test_inmoov_gym()
+    test_inmoov_gym()
     # test_inmoov()
-    test_robot_view()
+    # test_robot_view()
