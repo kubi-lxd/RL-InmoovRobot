@@ -195,6 +195,9 @@ def position_controller(socket):
 
 if __name__ == "__main__":
     # For remote server #
+    if len(USER_NAME) == 0:
+        USER_NAME = input("User name for the ssh connection: ")
+        SSH_PWD = input("Password for ssh connection: ")
     socket = client_ssh_connection()
 
     #############################

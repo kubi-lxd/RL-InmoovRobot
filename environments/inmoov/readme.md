@@ -62,6 +62,8 @@ python -m environments.inmoov.inmoov_server
 ```
 虽然是zmq的PAIR传输，理论上不会出现丢包的问题，但是依旧建议先运行服务器端（信息的主要发送端）。
 
+*Remark*：如果想在自己的电脑上进行交互，可以在server端去掉注释，换成local模式
+
 #### 执行效果
 期待在自己的PC上（客户端）出现一个opencv构成的拖动条，一个matplotlib窗口提供双目视觉信息。
 
@@ -74,3 +76,4 @@ python -m environments.inmoov.inmoov_server
 也可以从`inmoov_client.py`中寻找，在主程序main里面也可以看到，data变量是由`robot.server_step(msg[command])`得来的，其中
 函数通过server_step来实现环境交互的功能。
 
+因此，如果不想通过数据传输得到数据，可以仿照inmoov_client的主函数进行数据获取。
