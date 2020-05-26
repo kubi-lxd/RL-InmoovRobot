@@ -193,14 +193,14 @@ def position_controller(socket):
 
     cv2.destroyAllWindows()
 
-# if __name__ == "__main__":
-#     # For remote server #
-#     socket = client_ssh_connection()
-#
-#     #############################
-#     #### local version ##########
-#     #############################
-#     # socket = client_connection()
-#
-#     # joint_controller(socket, joint_info=joint_info)
-#     position_controller(socket)
+if __name__ == "__main__":
+    # For remote server #
+    socket = client_ssh_connection()
+
+    #############################
+    #### local version ##########
+    #############################
+    # socket = client_connection()
+
+    # joint_controller(socket, joint_info=joint_info)
+    position_controller(socket)

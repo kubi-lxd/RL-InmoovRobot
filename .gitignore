@@ -121,4 +121,6 @@ ENV/
 # mypy
 .mypy_cache/
 
+environments/inmoov/user_config.json
+
 
