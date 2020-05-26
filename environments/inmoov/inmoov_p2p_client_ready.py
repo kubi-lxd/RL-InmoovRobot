@@ -30,7 +30,7 @@ class InmoovGymEnv(SRLGymEnv):
                  action_repeat=1, srl_model="ground_truth",
                  seed=0, debug_mode=False, render=False,
                  positional_control=True,
-                 discrete=True,
+                 discrete=False,
                  **kwargs):
         """
 
@@ -195,7 +195,9 @@ class InmoovGymEnv(SRLGymEnv):
         done = self._termination()
         infos = {}
         robot_view = self._inmoov.robot_render()
-        left_px, right_px = robot_view[0][...,:3], robot_view[1][...,:3]
+        left_px = robot_view[0].reshape([RENDER_WIDTH, RENDER_HEIGHT, -1])
+        right_px = robot_view[0].reshape([RENDER_WIDTH, RENDER_HEIGHT, -1])
+        left_px, right_px = left_px[...,:3], right_px[...,:3]
         px = np.array([left_px, right_px])
         return np.array(obs), reward, done, infos, px, self._get_effector_pos(),
 
@@ -206,11 +208,12 @@ class InmoovGymEnv(SRLGymEnv):
         if self.positional_control:
             if action is None:
                 action = np.array([0, 0, 0])
-            dv = 1.2
-            dx = [-dv, dv, 0, 0, 0, 0][action]
-            dy = [0, 0, -dv, dv, 0, 0][action]
-            dz = [0, 0, 0, 0, -dv, dv][action]
-            action = [dx, dy, dz]
+            if isinstance(self.action_space, gym.spaces.Discrete):
+                dv = 1.2
+                dx = [-dv, dv, 0, 0, 0, 0][action]
+                dy = [0, 0, -dv, dv, 0, 0][action]
+                dz = [0, 0, 0, 0, -dv, dv][action]
+                action = [dx, dy, dz]
             for i in range(self.action_repeat):
                 self._inmoov.apply_action_pos(action)
                 p.stepSimulation()

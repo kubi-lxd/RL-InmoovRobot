@@ -19,8 +19,8 @@ from environments.jaka_gym.obstacle_gym_env import JakaButtonObsGymEnv
 # from environments.gym_baxter.baxter_env import BaxterEnv
 # from environments.robobo_gym.robobo_env import RoboboEnv
 # from environments.omnirobot_gym.omnirobot_env import OmniRobotEnv
-from environments.inmoov.inmoov_p2p import InmoovGymEnv
-
+# from environments.inmoov.inmoov_p2p import InmoovGymEnv
+from environments.inmoov.inmoov_p2p_client_ready import InmoovGymEnv
 def register(_id, **kvargs):
     if _id in registry.env_specs:
         return
@@ -40,8 +40,6 @@ def isXAvailable():
     except FileNotFoundError:
         # Return False if xset is not present on the machine
         return False
-
-
 registered_env = {
     "KukaButtonGymEnv-v0":            (KukaButtonGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
     "KukaRandButtonGymEnv-v0":        (KukaRandButtonGymEnv, KukaButtonGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
@@ -51,7 +49,8 @@ registered_env = {
     "MobileRobot2TargetGymEnv-v0":    (MobileRobot2TargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobot1DGymEnv-v0":         (MobileRobot1DGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
     "MobileRobotLineTargetGymEnv-v0": (MobileRobotLineTargetGymEnv, MobileRobotGymEnv, PlottingType.PLOT_2D, ThreadingType.PROCESS),
-    "InmoovGymEnv-v0":                (InmoovGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
+    # "InmoovGymEnv-v0":                (InmoovGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
+    "InmoovGymEnv-v0":               (InmoovGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
     "InmoovOneArmButtonGymEnv-v0":    (InmoovOneArmButtonGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS),
     "JakaButtonGymEnv-v0":            (JakaButtonObsGymEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.PROCESS)
     #"Baxter-v0":                      (BaxterEnv, SRLGymEnv, PlottingType.PLOT_3D, ThreadingType.NONE),

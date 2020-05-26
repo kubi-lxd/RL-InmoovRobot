@@ -33,3 +33,37 @@ python -m visdom.server
 ```
 python -m rl_baselines.train --env InmoovGymEnv-v0 --srl-model ground_truth --algo ppo2 --log-dir logs/ --num-timesteps 2000000
 ```
+
+
+Remote control
+----------------
+现在的inmoov环境可以对服务器进行远端控制了。
+
+#### 配置环境：
+- 服务器要求完整的python环境，可以参考robotics-srl的环境配置；
+- 客户端，即自己电脑这一端，需要安装的主要有：
+```
+zmq #用于实现网络交互
+matplotlib # 用于画图，呈现双目视角
+cv2 # 用于实现简易的滚动条ui设计
+numpy #数字计算及array处理
+```
+
+#### 运行代码：
+在服务器端运行(由于当初命名问题，服务器端命名为client，后续可能会修改)
+```shell script
+python -m environments.inmoov.inmoov_client
+```
+在客户端（个人PC），同样在项目根目录，需要执行代码：
+```shell script
+python -m environments.inmoov.inmoov_server
+```
+虽然是zmq的PAIR传输，理论上不会出现丢包的问题，但是依旧建议先运行服务器端（信息的主要发送端）。
+
+#### 执行效果
+期待在自己的PC上（客户端）出现一个opencv构成的拖动条，一个matplotlib窗口提供双目视觉信息。
+
+
+
+
+

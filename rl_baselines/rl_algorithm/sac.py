@@ -95,5 +95,5 @@ class SACModel(StableBaselinesRLObject):
         }
 
         self.model = self.model_class(policy_fn, env, **{**param_kwargs, **train_kwargs})
-        self.model.learn(total_timesteps=args.num_timesteps, seed=args.seed, callback=callback)
+        self.model.learn(total_timesteps=args.num_timesteps, callback=callback)
         env.close()

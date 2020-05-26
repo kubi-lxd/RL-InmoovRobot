@@ -17,6 +17,15 @@ SSH_PORT = 17253 # SSH port
 SSH_PWD = "SJJLPPsunte95" # SSH passwords
 USER_NAME = "tete" # SSH username
 
+
+# SERVER_PORT = 7777
+# HOSTNAME = 'localhost'
+# SSH_NAME = "*********"
+# SSH_PORT = "**********"
+# SSH_PWD = "**********" # SSH passwords
+# USER_NAME = "*********" # SSH username
+
+
 def server_connection():
     context = zmq.Context()
     socket = context.socket(zmq.PAIR)

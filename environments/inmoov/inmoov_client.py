@@ -33,7 +33,7 @@ def test_inmoov_gym():
 
 if __name__ == "__main__":
     socket = server_connection()
-    robot = InmoovGymEnv(debug_mode=False, positional_control=True)
+    robot = InmoovGymEnv(debug_mode=False, positional_control=True, discrete=False)
     init_pose = robot._inmoov.get_joints_pos()
     joints_num = len(init_pose)
 

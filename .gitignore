@@ -9,7 +9,8 @@ pybullet_data/
 urdf_robot/
 jaka/
 !/urdf_robot/urdf_note.md
-
+spinup/
+run/
 logs/
 logs_real/
 *.bak

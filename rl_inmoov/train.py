@@ -5,14 +5,17 @@ from visdom import Visdom
 import inspect
 
 from stable_baselines import PPO2
+from stable_baselines import SAC
 from stable_baselines.common.policies import MlpPolicy
-from environments.inmoov.inmoov_p2p import InmoovGymEnv
+# from environments.inmoov.inmoov_p2p import InmoovGymEnv
+from environments.inmoov.inmoov_p2p_client_ready import InmoovGymEnv
 from gym.envs.registration import registry, patch_deprecated_methods, load
 
 from ipdb import set_trace as tt
 
 from stable_baselines.common.vec_env import VecEnv, VecNormalize, DummyVecEnv, SubprocVecEnv, VecFrameStack
 from environments.utils import makeEnv
+from environments.registry import *
 
 def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normalise=None):
     """
@@ -23,7 +26,6 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
     :return: (Gym VecEnv)
     """
     # imported here to prevent cyclic imports
-
     envs = [makeEnv(args.env, args.seed, i, args.log_dir, allow_early_resets=allow_early_resets, env_kwargs=env_kwargs)
             for i in range(args.num_cpu)]
 
@@ -43,21 +45,26 @@ def createEnvs(args, allow_early_resets=False, env_kwargs=None, load_path_normal
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train script for reinforcement learning")
-    parser.add_argument('--algo', type=str, default='ppo2')
+    parser.add_argument('--algo', type=str, default='sac')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--log-dir', type=str, default='/logs/')
-    parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0')
-    parser.add_argument('--num-timsteps', type=int, default=int(1e5))
+    parser.add_argument('--log-dir', type=str, default='logs/test/')
+    # parser.add_argument('--env', type=str, default='KukaButtonGymEnv-v0')
+    parser.add_argument('--num-stack', type=int, default=1)
+    parser.add_argument('--env', type=str, default='InmoovGymEnv-v0')
+    parser.add_argument('--num-timsteps', type=int, default=int(5e6))
     parser.add_argument('--obs-type', type=str, default='ground_truth')
     parser.add_argument('--num-cpu', type=int, default=1)
     args, unknown = parser.parse_known_args()
 
     env_class = InmoovGymEnv
     # env default kwargs
-    default_env_kwargs = {k: v.default
-                          for k, v in inspect.signature(env_class.__init__).parameters.items()
-                          if v is not None}
+    # default_env_kwargs = {k: v.default
+    #                       for k, v in inspect.signature(env_class.__init__).parameters.items()
+    #                       if v is not None}
+    # default_env_kwargs['discrete'] = False
     env = createEnvs(args)
-    tt()
-    model = PPO2(policy=MlpPolicy, env=env, learning_rate=lambda f: f*2.5e-4, verbose=1)
+    # policy_kwargs = {"n_env": 1,
+    #                  "n_steps":128,
+    #                  "n_batch":64}
+    model = SAC(policy="MlpPolicy", env=env, learning_rate=lambda f: f*3e-4, verbose=1)#, policy_kwargs=policy_kwargs)
     model.learn(total_timesteps=args.num_timsteps, seed=args.seed)
