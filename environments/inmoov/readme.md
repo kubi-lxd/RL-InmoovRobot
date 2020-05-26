@@ -50,6 +50,8 @@ numpy #数字计算及array处理
 ```
 
 #### 运行代码：
+先修改user_config.json内部的配置数据，用户名等信息
+
 在服务器端运行(由于当初命名问题，服务器端命名为client，后续可能会修改)
 ```shell script
 python -m environments.inmoov.inmoov_client
@@ -63,7 +65,12 @@ python -m environments.inmoov.inmoov_server
 #### 执行效果
 期待在自己的PC上（客户端）出现一个opencv构成的拖动条，一个matplotlib窗口提供双目视觉信息。
 
+中间件输入输出接口：
+----------------
+可以从`inmoov_server.py`中寻找，当然前提是开启client作为数据发送端，才能够形成数据交互，这个途径的好处是可以直接在windows上工作，免去了安装环境的痛苦，
+困难点在于，网速不好的时候，交互过程和数据发送非常缓慢。
+其中变量：`joint_state, left_px, right_px, reward, done, effector_position`均是预留的数据来源
 
-
-
+也可以从`inmoov_client.py`中寻找，在主程序main里面也可以看到，data变量是由`robot.server_step(msg[command])`得来的，其中
+函数通过server_step来实现环境交互的功能。
 

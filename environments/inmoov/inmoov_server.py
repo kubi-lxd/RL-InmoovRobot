@@ -4,27 +4,20 @@ from matplotlib import pyplot as plt
 import numpy as np
 import time
 import cv2
-from ipdb import set_trace as tt
+import json
 
 from share_control.ui_cv import Slider
 from .joints_registry import joint_info
 # from environments.inmoov.inmoov_p2p_client_ready import InmoovGymEnv
 
-SERVER_PORT = 7777
-HOSTNAME = 'localhost'
-SSH_NAME = "283a60820s.wicp.vip" # SSH ip
-SSH_PORT = 17253 # SSH port
-SSH_PWD = "SJJLPPsunte95" # SSH passwords
-USER_NAME = "tete" # SSH username
 
-
-# SERVER_PORT = 7777
-# HOSTNAME = 'localhost'
-# SSH_NAME = "*********"
-# SSH_PORT = "**********"
-# SSH_PWD = "**********" # SSH passwords
-# USER_NAME = "*********" # SSH username
-
+with open("environments/inmoov/user_config.json", "r") as f:
+    user_info = json.load(f)
+SERVER_PORT = user_info["SERVER_PORT"]
+HOSTNAME = user_info["HOSTNAME"]
+SSH_NAME = user_info["SSH_NAME"]
+SSH_PWD = user_info["SSH_PWD"]
+USER_NAME = user_info["USER_NAME"]
 
 def server_connection():
     context = zmq.Context()
@@ -138,6 +131,12 @@ def joint_controller(socket, joint_info):
         step_data = []
         for i in range(5):
             step_data.append(recv_array(socket))
+
+        # step data contains information like:
+        # joint state: the state (position) for every joint, and the joints are ordered like "joint_info" in the joints_registry file
+        # left, right pixel: the view from robot eyes
+        # reward, done : the environment feedback
+        # effector_position: the 3D position of the effector
         joint_state = step_data[0]
         left_px, right_px = step_data[3][0], step_data[3][1]
         reward = np.squeeze(step_data[1])
@@ -194,14 +193,14 @@ def position_controller(socket):
 
     cv2.destroyAllWindows()
 
-if __name__ == "__main__":
-    # For remote server #
-    socket = client_ssh_connection()
-
-    #############################
-    #### local version ##########
-    #############################
-    # socket = client_connection()
-
-    # joint_controller(socket, joint_info=joint_info)
-    position_controller(socket)
+# if __name__ == "__main__":
+#     # For remote server #
+#     socket = client_ssh_connection()
+#
+#     #############################
+#     #### local version ##########
+#     #############################
+#     # socket = client_connection()
+#
+#     # joint_controller(socket, joint_info=joint_info)
+#     position_controller(socket)
